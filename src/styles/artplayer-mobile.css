@@ -15,6 +15,104 @@
   .art-control-volume {
     display: none !important;
   }
+
+  /* 播放页移动端控制层：按钮热区放大，进度条保持克制，避免遮挡时间 */
+  .art-mobile-compact .artplayer-plugin-liquid-glass.art-control-show {
+    --art-control-height: 36px;
+    --art-control-icon-size: 19px;
+    --art-control-icon-scale: 1;
+    --art-bottom-gap: 0px;
+    --art-bottom-offset: 0px;
+  }
+
+  .art-mobile-compact .artplayer-plugin-liquid-glass.art-control-show .art-bottom {
+    justify-content: flex-end !important;
+    padding-bottom: 0 !important;
+  }
+
+  .art-mobile-compact .artplayer-plugin-liquid-glass.art-control-show .art-bottom .art-liquid-glass {
+    position: absolute;
+    right: 10px;
+    bottom: 0;
+    left: 10px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    max-width: calc(100% - 20px);
+    border-radius: 10px;
+    padding: 6px 10px 4px !important;
+  }
+
+  .art-mobile-compact .art-controls {
+    min-height: 34px !important;
+    align-items: center !important;
+    gap: 2px !important;
+  }
+
+  .art-mobile-compact .art-control {
+    min-width: 28px !important;
+    min-height: 34px !important;
+    padding: 0 4px !important;
+  }
+
+  .art-mobile-compact .art-control-playAndPause,
+  .art-mobile-compact .art-controls-left .art-control:first-child {
+    min-width: 36px !important;
+  }
+
+  .art-mobile-compact .art-control svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+
+  .art-mobile-compact .art-control-time {
+    min-width: auto !important;
+    padding: 0 3px !important;
+    font-size: 12px !important;
+  }
+
+  .art-mobile-compact .art-progress {
+    order: 0 !important;
+    flex: 0 0 8px !important;
+    width: 100% !important;
+    height: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .art-mobile-compact .art-controls {
+    order: 1 !important;
+  }
+
+  .art-mobile-compact .art-progress .art-control-progress {
+    height: 8px !important;
+  }
+
+  .art-mobile-compact .art-progress .art-control-progress-inner {
+    height: 4px !important;
+  }
+
+  .art-mobile-compact .art-progress .art-control-progress-handle {
+    width: 12px !important;
+    height: 12px !important;
+    margin-top: -4px !important;
+  }
+
+  .art-mobile-compact .art-state {
+    transform: scale(0.82) !important;
+  }
+
+  .art-mobile-compact .art-seek-floating-left,
+  .art-mobile-compact .art-seek-floating-right {
+    width: 52px !important;
+    height: 52px !important;
+    padding: 10px !important;
+  }
+
+  .art-mobile-compact .art-lock {
+    transform: scale(0.86) !important;
+    transform-origin: center !important;
+  }
 }
 
 /* ===== Small Screen (Mobile Portrait) ===== */

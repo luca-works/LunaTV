@@ -4,6 +4,27 @@ import { getCacheTime, getConfig } from '@/lib/config';
 import { recordRequest, getDbQueryCount, resetDbQueryCount } from '@/lib/performance-monitor';
 import { DEFAULT_USER_AGENT } from '@/lib/user-agent';
 
+const SHORT_DRAMA_KEYWORDS = ['短剧', '女频恋爱', '反转爽剧', '古装仙侠', '年代穿越', '脑洞悬疑', '现代都市'];
+
+function normalizeCategoryName(name: string): string {
+  return SHORT_DRAMA_KEYWORDS.slice(1).find(keyword => name.includes(keyword)) || '短剧';
+}
+
+async function resolveCategoryId(api: string, categoryName: string): Promise<number | null> {
+  const response = await fetch(`${api}?ac=list`, {
+    headers: { 'User-Agent': DEFAULT_USER_AGENT, 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  const data = await response.json();
+  const categories = Array.isArray(data.class) ? data.class : [];
+  const match = categories.find((cat: any) =>
+    cat.type_name && SHORT_DRAMA_KEYWORDS.some(keyword => cat.type_name.includes(keyword))
+      && normalizeCategoryName(cat.type_name) === categoryName
+  );
+  return match ? Number(match.type_id) : null;
+}
+
 // 强制动态路由，禁用所有缓存
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,7 +35,8 @@ async function fetchListFromSource(
   api: string,
   categoryId: number,
   page: number,
-  size: number
+  size: number,
+  sourceKey?: string
 ) {
   const apiUrl = `${api}?ac=detail&t=${categoryId}&pg=${page}`;
 
@@ -46,6 +68,7 @@ async function fetchListFromSource(
     author: item.vod_actor || '',
     backdrop: item.vod_pic_slide || item.vod_pic || '',
     vote_average: parseFloat(item.vod_score) || 0,
+    source_key: sourceKey,
   }));
 
   return {
@@ -57,6 +80,7 @@ async function fetchListFromSource(
 // 服务端专用函数，从所有短剧源聚合数据
 async function getShortDramaListInternal(
   category: number,
+  categoryName: string,
   page = 1,
   size = 20
 ) {
@@ -80,8 +104,10 @@ async function getShortDramaListInternal(
 
     // 有配置短剧源，聚合所有源的数据
     const results = await Promise.allSettled(
-      shortDramaSources.map(source => {
-        return fetchListFromSource(source.api, category, page, size);
+      shortDramaSources.map(async source => {
+        const localCategoryId = await resolveCategoryId(source.api, categoryName);
+        if (localCategoryId === null) return { list: [], hasMore: false };
+        return fetchListFromSource(source.api, localCategoryId, page, size, source.key);
       })
     );
 
@@ -135,6 +161,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
     const categoryId = searchParams.get('categoryId');
+    const categoryName = searchParams.get('categoryName');
     const page = searchParams.get('page');
     const size = searchParams.get('size');
 
@@ -191,7 +218,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 400 });
     }
 
-    const result = await getShortDramaListInternal(category, pageNum, pageSize);
+    const result = await getShortDramaListInternal(category, categoryName || '短剧', pageNum, pageSize);
 
     // 记录返回的数据
     console.log('✅ [SHORTDRAMA API] 返回数据:', {

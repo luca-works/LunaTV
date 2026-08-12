@@ -419,6 +419,7 @@ interface DataSource {
   key: string;
   api: string;
   detail?: string;
+  detail_mode?: 'api' | 'html' | 'auto';
   disabled?: boolean;
   from: 'config' | 'custom';
   is_adult?: boolean;
@@ -1016,142 +1017,13 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
   return (
     <div className='space-y-6'>
-      {/* 用户注册设置 - 仅站长可见 */}
+      {/* 用户维护设置 - 仅站长可见 */}
       {role === 'owner' && (
         <div>
           <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-            注册设置
+            用户维护
           </h4>
           <div className='p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <div className='font-medium text-gray-900 dark:text-gray-100'>
-                  允许用户注册
-                </div>
-                <div className='text-sm text-gray-600 dark:text-gray-400'>
-                  控制是否允许新用户通过注册页面自行注册账户
-                </div>
-              </div>
-              <div className='flex items-center'>
-                <button
-                  type="button"
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
-                    config.UserConfig.AllowRegister ? buttonStyles.toggleOn : buttonStyles.toggleOff
-                  }`}
-                  role="switch"
-                  aria-checked={config.UserConfig.AllowRegister}
-                  onClick={async () => {
-                    await withLoading('toggleAllowRegister', async () => {
-                      try {
-                        const response = await fetch('/api/admin/config', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            ...config,
-                            UserConfig: {
-                              ...config.UserConfig,
-                              AllowRegister: !config.UserConfig.AllowRegister
-                            }
-                          })
-                        });
-                        
-                        if (response.ok) {
-                          await refreshConfig();
-                          showAlert({
-                            type: 'success',
-                            title: '设置已更新',
-                            message: config.UserConfig.AllowRegister ? '已禁止用户注册' : '已允许用户注册',
-                            timer: 2000
-                          });
-                        } else {
-                          throw new Error('更新配置失败');
-                        }
-                      } catch (err) {
-                        showError(err instanceof Error ? err.message : '操作失败', showAlert);
-                      }
-                    });
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${
-                      config.UserConfig.AllowRegister ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
-                    }`}
-                  />
-                </button>
-                <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
-                  {config.UserConfig.AllowRegister ? '开启' : '关闭'}
-                </span>
-              </div>
-            </div>
-
-            {/* 需要邀请码注册设置 */}
-            {config.UserConfig.AllowRegister && (
-              <div className='p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <div className='font-medium text-gray-900 dark:text-gray-100'>
-                      需要邀请码注册
-                    </div>
-                    <div className='text-sm text-gray-600 dark:text-gray-400'>
-                      开启后，用户注册时必须提供有效的邀请码
-                    </div>
-                  </div>
-                  <div className='flex items-center'>
-                    <button
-                      type="button"
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
-                        config.UserConfig.RequireInviteCode ? buttonStyles.toggleOn : buttonStyles.toggleOff
-                      }`}
-                      role="switch"
-                      aria-checked={config.UserConfig.RequireInviteCode}
-                      onClick={async () => {
-                        await withLoading('toggleRequireInviteCode', async () => {
-                          try {
-                            const response = await fetch('/api/admin/config', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                ...config,
-                                UserConfig: {
-                                  ...config.UserConfig,
-                                  RequireInviteCode: !config.UserConfig.RequireInviteCode
-                                }
-                              })
-                            });
-
-                            if (response.ok) {
-                              await refreshConfig();
-                              showAlert({
-                                type: 'success',
-                                title: '设置已更新',
-                                message: config.UserConfig.RequireInviteCode ? '已关闭邀请码注册' : '已开启邀请码注册',
-                                timer: 2000
-                              });
-                            } else {
-                              throw new Error('更新配置失败');
-                            }
-                          } catch (err) {
-                            showError(err instanceof Error ? err.message : '操作失败', showAlert);
-                          }
-                        });
-                      }}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none inline-block h-5 w-5 rounded-full ${buttonStyles.toggleThumb} shadow transform ring-0 transition duration-200 ease-in-out ${
-                          config.UserConfig.RequireInviteCode ? buttonStyles.toggleThumbOn : buttonStyles.toggleThumbOff
-                        }`}
-                      />
-                    </button>
-                    <span className='ml-3 text-sm font-medium text-gray-900 dark:text-gray-100'>
-                      {config.UserConfig.RequireInviteCode ? '开启' : '关闭'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* 自动清理非活跃用户设置 */}
             <div className='p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
               <div className='flex items-center justify-between mb-4'>
@@ -2995,6 +2867,7 @@ const VideoSourceConfig = ({
     key: '',
     api: '',
     detail: '',
+    detail_mode: 'auto',
     disabled: false,
     from: 'config',
   });
@@ -3357,6 +3230,7 @@ const VideoSourceConfig = ({
         name: newSource.name,
         api: newSource.api,
         detail: newSource.detail,
+        detail_mode: newSource.detail_mode,
         is_adult: newSource.is_adult,
         type: newSource.type,
       });
@@ -3365,6 +3239,7 @@ const VideoSourceConfig = ({
         key: '',
         api: '',
         detail: '',
+        detail_mode: 'auto',
         disabled: false,
         from: 'custom',
         is_adult: false,
@@ -3378,7 +3253,7 @@ const VideoSourceConfig = ({
 
   // 编辑视频源
   const handleEditSource = (source: DataSource) => {
-    setEditingSource({ ...source });
+    setEditingSource({ ...source, detail_mode: source.detail_mode || 'auto' });
   };
 
   // 保存编辑的视频源
@@ -3391,6 +3266,7 @@ const VideoSourceConfig = ({
         name: editingSource.name,
         api: editingSource.api,
         detail: editingSource.detail,
+        detail_mode: editingSource.detail_mode,
         is_adult: editingSource.is_adult,
         type: editingSource.type,
       });
@@ -3606,6 +3482,15 @@ const VideoSourceConfig = ({
         >
           {source.detail || '-'}
         </td>
+        <td className='px-6 py-4 whitespace-nowrap text-sm'>
+          <span className='inline-flex items-center rounded-full bg-indigo-100 px-2 py-1 text-xs text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200'>
+            {source.detail_mode === 'html'
+              ? '网页优先'
+              : source.detail_mode === 'api'
+                ? '仅 API'
+                : 'API 优先'}
+          </span>
+        </td>
         <td className='px-6 py-4 whitespace-nowrap max-w-[1rem]'>
           <span
             className={`px-2 py-1 text-xs rounded-full ${!source.disabled
@@ -3803,6 +3688,7 @@ const VideoSourceConfig = ({
           key: source.key,
           api: source.api,
           detail: source.detail || '',
+          detail_mode: source.detail_mode || 'auto',
           disabled: source.disabled || false,
           is_adult: source.is_adult || false,
           type: source.type || 'vod',
@@ -3821,6 +3707,7 @@ const VideoSourceConfig = ({
           if (source.detail) {
             sourceData.detail = source.detail;
           }
+          sourceData.detail_mode = source.detail_mode || 'auto';
           if (source.is_adult) {
             sourceData.is_adult = source.is_adult;
           }
@@ -3935,6 +3822,7 @@ const VideoSourceConfig = ({
             name: item.name,
             api: item.api,
             detail: item.detail || '',
+            detail_mode: item.detail_mode || 'auto',
             is_adult: item.is_adult || false,
             type: item.type || 'vod',
             weight: item.weight ?? 50,
@@ -4009,7 +3897,7 @@ const VideoSourceConfig = ({
               Cloudflare Worker 代理加速
             </h3>
             <p className='text-sm text-gray-600 dark:text-gray-400 mt-1'>
-              为网页播放启用全球CDN加速，同时加速视频源API访问、视频/m3u8播放流，以及所有 TMDB 接口和图片请求（演员搜索、首页 Hero 横幅背景图/Logo、播放页背景图等）
+              为网页播放启用全球CDN加速，提升视频源API访问速度和稳定性
             </p>
           </div>
           <label className='relative inline-flex items-center cursor-pointer'>
@@ -4049,9 +3937,6 @@ const VideoSourceConfig = ({
                 <li>• 通过Cloudflare全球CDN加速视频源API访问</li>
                 <li>• 自动转发所有API参数（ac=list, ac=detail等）</li>
                 <li>• 为每个源生成唯一路径，提升兼容性</li>
-                <li>• 播放m3u8/视频时自动经Worker代理转发，加速播放流</li>
-                <li>• Worker 代理失败时自动降级为直连，不影响正常播放</li>
-                <li>• Emby 源不受影响（需自定义鉴权头，始终直连）</li>
                 <li>• 仅影响网页播放，不影响TVBox配置</li>
               </ul>
             </div>
@@ -4357,7 +4242,25 @@ const VideoSourceConfig = ({
               }
               className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
             />
+            <select
+              value={newSource.detail_mode || 'auto'}
+              onChange={(e) =>
+                setNewSource((prev) => ({
+                  ...prev,
+                  detail_mode: e.target.value as 'api' | 'html' | 'auto',
+                }))
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              aria-label='详情获取策略'
+            >
+              <option value='auto'>详情策略：API 优先，网页回退</option>
+              <option value='api'>详情策略：仅 API</option>
+              <option value='html'>详情策略：网页优先，API 回退</option>
+            </select>
           </div>
+          <p className='text-xs text-gray-500 dark:text-gray-400'>
+            大多数源使用“API 优先”；只有 API 返回分享页而非媒体地址时才使用“网页优先”。
+          </p>
           {/* 成人资源标记 */}
           <div className='flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
             <label className='flex items-center space-x-2 cursor-pointer'>
@@ -4496,6 +4399,34 @@ const VideoSourceConfig = ({
                 />
               </div>
 
+              {/* 详情获取策略 */}
+              <div>
+                <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+                  详情获取策略
+                </label>
+                <select
+                  value={editingSource.detail_mode || 'auto'}
+                  onChange={(e) =>
+                    setEditingSource((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            detail_mode: e.target.value as 'api' | 'html' | 'auto',
+                          }
+                        : null
+                    )
+                  }
+                  className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                >
+                  <option value='auto'>API 优先，网页失败回退</option>
+                  <option value='api'>仅使用 JSON API</option>
+                  <option value='html'>网页优先，失败回退 JSON API</option>
+                </select>
+                <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+                  网页策略需要填写 Detail 地址；金鹰等返回分享页的源适合使用网页优先。
+                </p>
+              </div>
+
               {/* 成人资源标记 */}
               <div className='flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700'>
                 <label className='flex items-center space-x-2 cursor-pointer'>
@@ -4589,6 +4520,9 @@ const VideoSourceConfig = ({
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                 Detail 地址
+              </th>
+              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                详情策略
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                 状态
@@ -5366,9 +5300,9 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
     DoubanProxy: '',
     DoubanImageProxyType: 'direct',
     DoubanImageProxy: '',
-    BangumiApiType: 'cmliussss',
+    BangumiApiType: 'server',
     BangumiApiProxy: '',
-    BangumiImageProxyType: 'cmliussss',
+    BangumiImageProxyType: 'server',
     BangumiImageProxy: '',
     EnablePuppeteer: false, // 默认关闭 Puppeteer
     DoubanCookies: '', // 默认无 Cookies
@@ -5409,8 +5343,8 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
   const bangumiApiTypeOptions = [
     { value: 'server', label: '服务端转发（默认，访问官方 api.bgm.tv）' },
     { value: 'cmliussss', label: 'Bangumi 反代 By CMLiussss（解决服务器被墙）' },
-    { value: 'corsapi', label: 'Cloudflare Worker 代理 By Smone' },
-    { value: 'sakura', label: '桜色镜像站（bangumi.lol，第三方镜像）' },
+    { value: 'corsapi', label: 'Cloudflare Worker 代理' },
+    { value: 'sakura', label: '桜色镜像站（bangumi.lol）' },
     { value: 'custom', label: '自定义反代地址' },
   ];
 
@@ -5418,8 +5352,8 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
   const bangumiImageProxyTypeOptions = [
     { value: 'server', label: '服务器代理（默认，由服务器代理请求）' },
     { value: 'cmliussss', label: 'Bangumi 图片 CDN By CMLiussss' },
-    { value: 'corsapi', label: 'Cloudflare Worker 代理 By Smone' },
-    { value: 'sakura', label: '桜色镜像站（bangumi.lol，第三方镜像）' },
+    { value: 'corsapi', label: 'Cloudflare Worker 代理' },
+    { value: 'sakura', label: '桜色镜像站（bangumi.lol）' },
     { value: 'direct', label: '直连（浏览器直接请求 lain.bgm.tv）' },
     { value: 'custom', label: '自定义代理' },
   ];
@@ -5467,9 +5401,9 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
         DoubanImageProxyType:
           config.SiteConfig.DoubanImageProxyType || 'direct',
         DoubanImageProxy: config.SiteConfig.DoubanImageProxy || '',
-        BangumiApiType: config.SiteConfig.BangumiApiType || 'cmliussss',
+        BangumiApiType: config.SiteConfig.BangumiApiType || 'server',
         BangumiApiProxy: config.SiteConfig.BangumiApiProxy || '',
-        BangumiImageProxyType: config.SiteConfig.BangumiImageProxyType || 'cmliussss',
+        BangumiImageProxyType: config.SiteConfig.BangumiImageProxyType || 'server',
         BangumiImageProxy: config.SiteConfig.BangumiImageProxy || '',
         EnablePuppeteer: config.DoubanConfig?.enablePuppeteer || false,
         DoubanCookies: config.DoubanConfig?.cookies || '',
@@ -6361,7 +6295,7 @@ const SiteConfigComponent = ({ config, refreshConfig }: { config: AdminConfig | 
             className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
           />
           <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-            请在 <a href='https://www.themoviedb.org/settings/api' target='_blank' rel='noopener noreferrer' className='text-blue-500 hover:text-blue-600'>TMDB 官网</a> 申请免费的 API Key。国内直连 TMDB 可能较慢或不稳定，可在「视频源配置」标签下的「Cloudflare Worker 代理加速」中启用后统一走代理转发
+            请在 <a href='https://www.themoviedb.org/settings/api' target='_blank' rel='noopener noreferrer' className='text-blue-500 hover:text-blue-600'>TMDB 官网</a> 申请免费的 API Key
           </p>
         </div>
 
@@ -8440,7 +8374,7 @@ function AdminPageClient() {
                       enabled: false,
                       botToken: '',
                       botUsername: '',
-                      autoRegister: true,
+                      autoRegister: false,
                       buttonSize: 'large',
                       showAvatar: true,
                       requestWriteAccess: false,

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { readTextLimited } from '@/lib/proxy-security';
 
-// oEmbed 响应体大小硬上限，防止异常上游返回超大响应把内存打爆
-const MAX_RESPONSE_BYTES = 1 * 1024 * 1024; // 1MB（oEmbed 正常响应体很小）
+const MAX_RESPONSE_BYTES = 1024 * 1024;
 
 /**
  * YouTube oEmbed API 代理路由
@@ -51,8 +50,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const text = await readTextLimited(response, MAX_RESPONSE_BYTES);
-    const data = JSON.parse(text);
+    const data = JSON.parse(await readTextLimited(response, MAX_RESPONSE_BYTES));
 
     // 返回数据，并设置缓存头
     return NextResponse.json(data, {

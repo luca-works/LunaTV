@@ -15,7 +15,8 @@ const SHORT_DRAMA_KEYWORDS = ['短剧', '女频恋爱', '反转爽剧', '古装�
 // 从单个短剧源获取数据（通过分类名称查找）
 async function fetchFromShortDramaSource(
   api: string,
-  size: number
+  size: number,
+  sourceKey?: string
 ) {
   // Step 1: 获取分类列表，找到短剧相关分类的ID
   const listUrl = `${api}?ac=list`;
@@ -81,6 +82,7 @@ async function fetchFromShortDramaSource(
     author: item.vod_actor || '',
     backdrop: item.vod_pic_slide || item.vod_pic || '',
     vote_average: parseFloat(item.vod_score) || 0,
+    source_key: sourceKey,
   }));
 }
 
@@ -114,7 +116,7 @@ async function getRecommendedShortDramasInternal(
     const results = await Promise.allSettled(
       shortDramaSources.map(source => {
         console.log(`🔄 请求短剧源: ${source.name}`);
-        return fetchFromShortDramaSource(source.api, size);
+        return fetchFromShortDramaSource(source.api, size, source.key);
       })
     );
 

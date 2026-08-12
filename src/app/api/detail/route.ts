@@ -266,6 +266,7 @@ export async function GET(request: NextRequest) {
 
     // 优先通过搜索匹配（如果有 title）
     let result: any = null;
+    let detailError: Error | null = null;
 
     if (title.trim()) {
       try {
@@ -284,13 +285,15 @@ export async function GET(request: NextRequest) {
     if (!result) {
       try {
         result = await getDetailFromApi(apiSite, id);
-      } catch {
-        // 直接获取也失败
+      } catch (error) {
+        detailError = error instanceof Error ? error : new Error(String(error));
       }
     }
 
     if (!result) {
-      const errorResponse = { error: '未找到匹配的视频源' };
+      const errorResponse = {
+        error: detailError?.message || '未找到匹配的视频源',
+      };
       const errorSize = Buffer.byteLength(JSON.stringify(errorResponse), 'utf8');
 
       recordRequest({

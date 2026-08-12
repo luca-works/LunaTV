@@ -22,7 +22,7 @@ const PAGE_SIZE = 20;
 
 // Query Options 工厂函数
 const shortDramaListOptions = (
-  selectedCategory: number | null,
+  selectedCategory: ShortDramaCategory | null,
   searchQuery: string,
   isSearchMode: boolean
 ) => infiniteQueryOptions({
@@ -32,7 +32,7 @@ const shortDramaListOptions = (
       return await searchShortDramas(searchQuery, pageParam, PAGE_SIZE);
     }
     if (selectedCategory) {
-      return await getShortDramaList(selectedCategory, pageParam, PAGE_SIZE);
+      return await getShortDramaList(selectedCategory.type_id, selectedCategory.type_name, pageParam, PAGE_SIZE);
     }
     return { list: [], hasMore: false };
   },
@@ -47,7 +47,7 @@ const shortDramaListOptions = (
 
 export default function ShortDramaPage() {
   const [categories, setCategories] = useState<ShortDramaCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ShortDramaCategory | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -79,10 +79,10 @@ export default function ShortDramaPage() {
   useEffect(() => {
     if (isLoading || isSearchMode || !selectedCategory || categories.length === 0) return;
     if (data && allDramas.length === 0) {
-      const currentIndex = categories.findIndex(c => c.type_id === selectedCategory);
+      const currentIndex = categories.findIndex(c => c.type_id === selectedCategory.type_id);
       const next = categories[currentIndex + 1];
       if (next) {
-        setSelectedCategory(next.type_id);
+        setSelectedCategory(next);
       }
     }
   }, [isLoading, data, allDramas, selectedCategory, categories, isSearchMode]);
@@ -111,7 +111,7 @@ export default function ShortDramaPage() {
       const cats = await getShortDramaCategories();
       setCategories(cats);
       if (cats.length > 0 && !selectedCategory) {
-        setSelectedCategory(cats[0].type_id);
+        setSelectedCategory(cats[0]);
       }
     };
     fetchCategories();
@@ -226,9 +226,9 @@ export default function ShortDramaPage() {
                 {categories.map((category, index) => (
                   <button
                     key={category.type_id}
-                    onClick={() => setSelectedCategory(category.type_id)}
+                    onClick={() => setSelectedCategory(category)}
                     className={`group relative overflow-hidden rounded-xl px-5 py-2.5 text-sm font-medium transition-all duration-300 transform hover:scale-105 ${
-                      selectedCategory === category.type_id
+                      selectedCategory?.type_id === category.type_id
                         ? 'bg-linear-to-r from-purple-500 via-purple-600 to-pink-500 text-white shadow-lg shadow-purple-500/40'
                         : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md'
                     }`}
@@ -237,12 +237,12 @@ export default function ShortDramaPage() {
                     }}
                   >
                     {/* 激活状态的光泽效果 */}
-                    {selectedCategory === category.type_id && (
+                    {selectedCategory?.type_id === category.type_id && (
                       <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                     )}
 
                     {/* 未激活状态的悬停背景 */}
-                    {selectedCategory !== category.type_id && (
+                    {selectedCategory?.type_id !== category.type_id && (
                       <div className="absolute inset-0 bg-linear-to-r from-purple-50 via-pink-50 to-purple-50 dark:from-purple-900/20 dark:via-pink-900/20 dark:to-purple-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     )}
 
@@ -290,7 +290,7 @@ export default function ShortDramaPage() {
                 }
               }}
               endReachedThreshold={3}
-              restoreKey={`shortdrama:${isSearchMode ? `search:${searchQuery.trim()}` : `cat:${selectedCategory ?? ''}`}`}
+              restoreKey={`shortdrama:${isSearchMode ? `search:${searchQuery.trim()}` : `cat:${selectedCategory?.type_name ?? ''}`}`}
               renderItem={(drama, index) => (
                 <ShortDramaCard drama={drama} priority={index < 30} />
               )}

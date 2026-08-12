@@ -1,58 +1,54 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
 .pnp.js
 
-# testing
-/coverage
-
-# next.js
+# generated build and test output
 /.next/
 /out/
+/build/
+/coverage/
+/.swc/
 
-# production
-/build
+# local and sensitive configuration
+.env
+.env*.local
+docker-compose.yml
+docker-compose.yaml
+.vercel
 
-# misc
-.DS_Store
+# local runtime data
+/data/
+/backup/
+/logs/
+crash-reports.jsonl
+
+# generated project files
+src/lib/runtime.ts
+public/manifest.json
+sitemap.xml
+sitemap-*.xml
+next-env.d.ts
+*.tsbuildinfo
+
+# credentials and certificates
 *.pem
+*.key
+*.p12
+*.pfx
 
-# debug
+# editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+
+# package-manager and debug output
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# local env files
-.env
-.env*.local
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# next-sitemap
-sitemap.xml
-sitemap-*.xml
-
-# generated files
-src/lib/runtime.ts
-public/manifest.json
-
-# local dev files
-AGENT.md
-TVBOX_DEV.md
-docker-compose.yml
 package-lock.json
 
-# crash logs
-/logs
-crash-reports.jsonl
-
-# sqlite data
-data/
+# local development notes
+AGENT.md
+TVBOX_DEV.md

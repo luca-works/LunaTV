@@ -11,6 +11,9 @@ export const runtime = 'nodejs';
 
 // 支持的操作类型
 type Action = 'add' | 'update' | 'disable' | 'enable' | 'delete' | 'sort' | 'batch_disable' | 'batch_enable' | 'batch_delete' | 'update_adult' | 'batch_mark_adult' | 'batch_unmark_adult' | 'batch_mark_shortdrama' | 'batch_mark_vod' | 'update_weight';
+type DetailMode = 'api' | 'html' | 'auto';
+
+const DETAIL_MODES: DetailMode[] = ['api', 'html', 'auto'];
 
 interface BaseBody {
   action?: Action;
@@ -58,11 +61,12 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'add': {
-        const { key, name, api, detail, is_adult, type, weight } = body as {
+        const { key, name, api, detail, detail_mode, is_adult, type, weight } = body as {
           key?: string;
           name?: string;
           api?: string;
           detail?: string;
+          detail_mode?: DetailMode;
           is_adult?: boolean;
           type?: 'vod' | 'shortdrama';
           weight?: number;
@@ -73,21 +77,33 @@ export async function POST(request: NextRequest) {
         if (adminConfig.SourceConfig.some((s) => s.key === key)) {
           return NextResponse.json({ error: '该源已存在' }, { status: 400 });
         }
-        // 校验采集源地址，拒绝内网/环回等 SSRF 目标，避免管理员（或被盗账号）
-        // 把内部服务地址存进配置，后续被搜索/详情/测速等运行时请求悄悄打到内网
         try {
           await validateProxyTargetUrl(api);
-        } catch (err) {
+        } catch (error) {
           return NextResponse.json(
-            { error: `采集源地址不合法：${(err as Error).message}` },
+            { error: `采集源地址不合法：${(error as Error).message}` },
             { status: 400 }
           );
+        }
+        if (detail_mode && !DETAIL_MODES.includes(detail_mode)) {
+          return NextResponse.json({ error: '详情策略参数无效' }, { status: 400 });
+        }
+        if (detail) {
+          try {
+            await validateProxyTargetUrl(detail);
+          } catch (error) {
+            return NextResponse.json(
+              { error: `详情页地址不合法：${(error as Error).message}` },
+              { status: 400 }
+            );
+          }
         }
         adminConfig.SourceConfig.push({
           key,
           name,
           api,
           detail,
+          detail_mode: detail_mode || 'auto',
           from: 'custom',
           disabled: false,
           is_adult: is_adult || false,
@@ -97,11 +113,12 @@ export async function POST(request: NextRequest) {
         break;
       }
       case 'update': {
-        const { key, name, api, detail, is_adult, type, weight } = body as {
+        const { key, name, api, detail, detail_mode, is_adult, type, weight } = body as {
           key?: string;
           name?: string;
           api?: string;
           detail?: string;
+          detail_mode?: DetailMode;
           is_adult?: boolean;
           type?: 'vod' | 'shortdrama';
           weight?: number;
@@ -116,9 +133,22 @@ export async function POST(request: NextRequest) {
         if (api) {
           try {
             await validateProxyTargetUrl(api);
-          } catch (err) {
+          } catch (error) {
             return NextResponse.json(
-              { error: `采集源地址不合法：${(err as Error).message}` },
+              { error: `采集源地址不合法：${(error as Error).message}` },
+              { status: 400 }
+            );
+          }
+        }
+        if (detail_mode && !DETAIL_MODES.includes(detail_mode)) {
+          return NextResponse.json({ error: '详情策略参数无效' }, { status: 400 });
+        }
+        if (detail) {
+          try {
+            await validateProxyTargetUrl(detail);
+          } catch (error) {
+            return NextResponse.json(
+              { error: `详情页地址不合法：${(error as Error).message}` },
               { status: 400 }
             );
           }
@@ -126,6 +156,7 @@ export async function POST(request: NextRequest) {
         if (name) entry.name = name;
         if (api) entry.api = api;
         if (detail !== undefined) entry.detail = detail;
+        if (detail_mode !== undefined) entry.detail_mode = detail_mode;
         if (is_adult !== undefined) entry.is_adult = is_adult;
         if (type !== undefined) entry.type = type;
         if (weight !== undefined) entry.weight = Math.max(0, Math.min(100, weight));

@@ -202,10 +202,6 @@ async function fetchWithTimeout(
   }
 }
 
-/**
- * 读取响应体，但对大小设硬上限——防止异常/恶意上游返回超大响应把内存打爆。
- * 边读边累计字节数，一旦超限立即抛出，不等读完整个响应体。
- */
 async function readBodyLimited(
   response: Response,
   limitBytes: number,
@@ -222,9 +218,14 @@ async function readBodyLimited(
       const { done, value } = await reader.read();
       if (done) break;
       if (!value) continue;
-
       total += value.byteLength;
       if (total > limitBytes) {
+        try {
+          await reader.cancel('response body too large');
+        } catch {
+          // Preserve the deterministic size-limit error below even if the
+          // upstream stream rejects cancellation while it is being closed.
+        }
         throw new Error(`Response body exceeds ${limitBytes} byte limit`);
       }
       chunks.push(value);
@@ -246,8 +247,7 @@ export async function readTextLimited(
   response: Response,
   limitBytes: number,
 ): Promise<string> {
-  const bytes = await readBodyLimited(response, limitBytes);
-  return new TextDecoder('utf-8').decode(bytes);
+  return new TextDecoder('utf-8').decode(await readBodyLimited(response, limitBytes));
 }
 
 export async function readArrayBufferLimited(
@@ -255,9 +255,9 @@ export async function readArrayBufferLimited(
   limitBytes: number,
 ): Promise<ArrayBuffer> {
   const bytes = await readBodyLimited(response, limitBytes);
-  const out = new ArrayBuffer(bytes.byteLength);
-  new Uint8Array(out).set(bytes);
-  return out;
+  const output = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(output).set(bytes);
+  return output;
 }
 
 export async function fetchWithValidatedRedirects(

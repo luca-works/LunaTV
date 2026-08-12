@@ -43,11 +43,9 @@ class ServerCache {
       return data;
     }
 
-    // 使用 structuredClone 进行深拷贝（原生 API，比 JSON 序列化快 2-5 倍）
     try {
       return structuredClone(data);
     } catch {
-      // 如果克隆失败（含不可克隆对象），回退到 JSON 序列化
       try {
         return JSON.parse(JSON.stringify(data));
       } catch {

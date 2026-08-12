@@ -1,2 +1,10 @@
-.env
-.env*.local
+.git
+.next
+node_modules
+data
+backup
+*.tgz
+*.tar
+*.tar.gz
+.DS_Store
+docker-compose.yml

@@ -109,9 +109,12 @@ export function OIDCAuthConfig({ config, providers = [], onSave, onSaveProviders
     setMessage(null);
     try {
       if (mode === 'multi' && onSaveProviders) {
-        await onSaveProviders(localProviders);
+        await onSaveProviders(localProviders.map(provider => ({
+          ...provider,
+          enableRegistration: false,
+        })));
       } else {
-        await onSave(localConfig);
+        await onSave({ ...localConfig, enableRegistration: false });
       }
       setMessage({ type: 'success', text: '保存成功' });
       setHasChanges(false);
@@ -145,13 +148,14 @@ export function OIDCAuthConfig({ config, providers = [], onSave, onSaveProviders
   };
 
   const handleSaveProvider = (provider: OIDCProvider) => {
+    const nextProvider = { ...provider, enableRegistration: false };
     const existingIndex = localProviders.findIndex(p => p.id === provider.id);
     if (existingIndex >= 0) {
       const updated = [...localProviders];
-      updated[existingIndex] = provider;
+      updated[existingIndex] = nextProvider;
       setLocalProviders(updated);
     } else {
-      setLocalProviders([...localProviders, provider]);
+      setLocalProviders([...localProviders, nextProvider]);
     }
     setEditingProvider(null);
     setHasChanges(true);
@@ -171,7 +175,7 @@ export function OIDCAuthConfig({ config, providers = [], onSave, onSaveProviders
         id: providerId,
         name: localConfig.buttonText || providerId.toUpperCase(),
         enabled: localConfig.enabled,
-        enableRegistration: localConfig.enableRegistration,
+        enableRegistration: false,
         issuer: localConfig.issuer,
         authorizationEndpoint: localConfig.authorizationEndpoint,
         tokenEndpoint: localConfig.tokenEndpoint,
@@ -355,31 +359,6 @@ export function OIDCAuthConfig({ config, providers = [], onSave, onSaveProviders
           <span
             className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
               localConfig.enabled ? 'translate-x-5' : 'translate-x-0'
-            }`}
-          />
-        </button>
-      </div>
-
-      {/* 启用OIDC注册 */}
-      <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg'>
-        <div>
-          <label htmlFor='enableRegistration' className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-            启用 OIDC 注册
-          </label>
-          <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-            允许通过 OIDC 登录时自动注册新用户
-          </p>
-        </div>
-        <button
-          type='button'
-          onClick={() => setLocalConfig({ ...localConfig, enableRegistration: !localConfig.enableRegistration })}
-          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-            localConfig.enableRegistration ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-              localConfig.enableRegistration ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
@@ -762,27 +741,6 @@ function ProviderEditModal({
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                   localProvider.enabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Enable Registration Toggle */}
-          <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg'>
-            <div>
-              <label className='text-sm font-medium text-gray-900 dark:text-gray-100'>允许注册</label>
-              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>允许通过此 Provider 自动注册新用户</p>
-            </div>
-            <button
-              type='button'
-              onClick={() => setLocalProvider({ ...localProvider, enableRegistration: !localProvider.enableRegistration })}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-                localProvider.enableRegistration ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  localProvider.enableRegistration ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>

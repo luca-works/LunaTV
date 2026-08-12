@@ -7,8 +7,7 @@ import { getBaseUrl, resolveUrl } from "@/lib/live";
 import { readTextLimited } from "@/lib/proxy-security";
 import { DEFAULT_USER_AGENT } from "@/lib/user-agent";
 
-// m3u8 manifest 响应体大小硬上限，防止异常上游返回超大响应把内存打爆
-const MAX_M3U8_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_M3U8_BYTES = 5 * 1024 * 1024;
 
 export const runtime = 'nodejs';
 
@@ -55,8 +54,6 @@ export async function GET(request: Request) {
   }
 
   const config = await getConfig();
-  // moontv-source 仅用于直播源的 UA 定制；点播场景（VOD 直连失败降级）不传该参数，
-  // 此时使用浏览器 UA 默认值而非要求匹配 LiveConfig，否则会 404 拒绝点播流量。
   let ua = DEFAULT_USER_AGENT;
   if (source) {
     const liveSource = config.LiveConfig?.find((s: any) => s.key === source);

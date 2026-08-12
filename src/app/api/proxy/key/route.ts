@@ -6,10 +6,9 @@ import { getConfig } from "@/lib/config";
 import { readArrayBufferLimited } from "@/lib/proxy-security";
 import { DEFAULT_USER_AGENT } from "@/lib/user-agent";
 
-export const runtime = 'nodejs';
+const MAX_KEY_BYTES = 1024 * 1024;
 
-// AES 密钥文件正常只有 16 字节，给个宽松上限防御异常上游
-const MAX_KEY_BYTES = 1 * 1024 * 1024; // 1MB
+export const runtime = 'nodejs';
 
 // Key 缓存管理
 const keyCache = new Map<string, { data: ArrayBuffer; timestamp: number; etag?: string }>();
@@ -86,7 +85,6 @@ export async function GET(request: Request) {
   }
 
   const config = await getConfig();
-  // 点播场景不携带 moontv-source（该参数只用于直播源的 UA 定制），此时使用默认浏览器 UA。
   let ua = DEFAULT_USER_AGENT;
   if (source) {
     const liveSource = config.LiveConfig?.find((s: any) => s.key === source);

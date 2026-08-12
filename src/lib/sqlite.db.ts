@@ -4,10 +4,8 @@ import fs from 'fs';
 import path from 'path';
 
 // node:sqlite is only available in Node.js 22.5+; dynamic require avoids
-// a hard crash on runtimes that don't ship this built-in (e.g. EdgeOne Pages
-// with Node.js 20). The import is deferred to the constructor so the module
-// can be loaded safely and will only throw when SqliteStorage is actually
-// instantiated on an unsupported runtime.
+// a hard crash on runtimes that don't ship this built-in. The import is
+// deferred until SqliteStorage is actually instantiated.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DatabaseSync = any;
 

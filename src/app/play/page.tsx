@@ -539,6 +539,7 @@ function PlayPageClient() {
 
   // 短剧ID（用于获取详情显示，不影响源搜索）
   const [shortdramaId] = useState(searchParams.get('shortdrama_id') || '');
+  const [shortdramaSource] = useState(searchParams.get('shortdrama_source') || '');
 
   // 搜索所需信息
   const [searchTitle] = useState(searchParams.get('stitle') || '');
@@ -915,7 +916,8 @@ function PlayPageClient() {
         // 传递 name 参数以支持备用API fallback
         const dramaTitle = searchParams.get('title') || videoTitleRef.current || '';
         const titleParam = dramaTitle ? `&name=${encodeURIComponent(dramaTitle)}` : '';
-        const response = await fetch(`/api/shortdrama/detail?id=${shortdramaId}&episode=1${titleParam}`);
+        const sourceParam = shortdramaSource ? `&source=${encodeURIComponent(shortdramaSource)}` : '';
+        const response = await fetch(`/api/shortdrama/detail?id=${shortdramaId}&episode=1${titleParam}${sourceParam}`);
         if (response.ok) {
           const data = await response.json();
           setShortdramaDetails(data);
@@ -928,7 +930,7 @@ function PlayPageClient() {
     };
 
     loadShortdramaDetails();
-  }, [shortdramaId, loadingShortdramaDetails, shortdramaDetails]);
+  }, [shortdramaId, shortdramaSource, loadingShortdramaDetails, shortdramaDetails]);
 
   // 自动网盘搜索：当有视频标题时可以随时搜索
   useEffect(() => {
@@ -2214,8 +2216,9 @@ function PlayPageClient() {
         const [, videoId, episode] = episodeData.split(':');
         // 添加剧名参数以支持备用API fallback
         const nameParam = detailData.drama_name ? `&name=${encodeURIComponent(detailData.drama_name)}` : '';
+        const sourceParam = shortdramaSource ? `&source=${encodeURIComponent(shortdramaSource)}` : '';
         const response = await fetch(
-          `/api/shortdrama/parse?id=${videoId}&episode=${episode}${nameParam}`
+          `/api/shortdrama/parse?id=${videoId}&episode=${episode}${nameParam}${sourceParam}`
         );
 
         if (response.ok) {
@@ -2250,7 +2253,6 @@ function PlayPageClient() {
         console.log('🎵 换集时应用音轨参数:', currentAudioTrackRef.current);
       }
 
-      // ☁️ Emby 源需要自定义鉴权头，不走 Cloudflare Worker 代理；其余源套一层加速
       if (!isEmbySource) {
         newUrl = applyVideoPlayProxy(newUrl);
       }
@@ -2939,8 +2941,9 @@ function PlayPageClient() {
           // 优先使用 URL 参数的 title，因为 videoTitleRef 可能还未初始化
           const dramaTitle = searchParams.get('title') || videoTitleRef.current || '';
           const titleParam = dramaTitle ? `&name=${encodeURIComponent(dramaTitle)}` : '';
+          const sourceParam = shortdramaSource ? `&source=${encodeURIComponent(shortdramaSource)}` : '';
           detailResponse = await fetch(
-            `/api/shortdrama/detail?id=${id}&episode=1${titleParam}`
+            `/api/shortdrama/detail?id=${id}&episode=1${titleParam}${sourceParam}`
           );
         } else {
           // 所有其他源（包括 Emby）统一使用 /api/detail
@@ -4251,7 +4254,6 @@ function PlayPageClient() {
           // 🔥 修复：标记切换中，阻止 video:ratechange 将浏览器重置的 1.0 保存到 localStorage
           isSourceSwitchingRef.current = true;
 
-        // ☁️ 新地址切换，重置 Worker 代理降级标记（非 m3u8 路径用）
         artPlayerRef.current._proxyFallbackDone = false;
 
         let switchPromise: Promise<any>;
@@ -4445,12 +4447,11 @@ function PlayPageClient() {
               video.hls.destroy();
             }
 
-            // ☁️ 新地址加载，重置 Worker 代理 / 第一方代理降级标记
             (video as any)._proxyFallbackDone = false;
             (video as any)._firstPartyProxyFallbackDone = false;
             (video as any)._currentHlsUrl = url;
             (video as any)._consecutiveNetworkErrorCount = 0;
-
+            
             // 在函数内部重新检测iOS13+设备
             const localIsIOS13 = isIOS13;
 
@@ -4461,10 +4462,8 @@ function PlayPageClient() {
             const hls = new Hls({
               debug: false,
               enableWorker: true,
-              // 关闭低延迟模式以改善点播体验 - Issue #194
-              // HLS.js 默认 lowLatencyMode: true，主要为 LL-HLS 直播流设计
-              // 点播场景下会导致：缓冲区过小、网络波动时容易卡顿、CPU 负担增加
-              lowLatencyMode: false,
+              // 参考 HLS.js config.ts：移动设备关闭低延迟模式以节省资源
+              lowLatencyMode: !isMobile,
 
               // 🎯 官方推荐的缓冲策略 - iOS13+ 特别优化
               /* 缓冲长度配置 - 参考 hlsDefaultConfig - 桌面设备应用用户配置 */
@@ -4581,14 +4580,11 @@ function PlayPageClient() {
               savePreferredAudioLang(switchedTrack?.language);
             });
 
-            // 依次尝试：Worker 代理 -> 直连 -> 本站第一方代理，每一级只降级一次。
-            // 返回 true 表示已发起下一级 loadSource，调用方不应再做其他恢复动作；
-            // 返回 false 表示所有降级手段已用尽。
             const tryFallbackOrGiveUp = (): boolean => {
               const activeUrl = (video as any)._currentHlsUrl || url;
-
-              // ☁️ Worker 代理请求失败（超时/502/畸形响应等）时，自动降级到直连原始地址
-              const rawUrl = !(video as any)._proxyFallbackDone ? stripVideoPlayProxy(activeUrl) : null;
+              const rawUrl = !(video as any)._proxyFallbackDone
+                ? stripVideoPlayProxy(activeUrl)
+                : null;
               if (rawUrl) {
                 console.warn('Worker 代理错误，降级为直连:', rawUrl);
                 (video as any)._proxyFallbackDone = true;
@@ -4597,12 +4593,14 @@ function PlayPageClient() {
                 hls.loadSource(rawUrl);
                 return true;
               }
-              // 🧭 直连失败时，最后尝试走本站第一方 m3u8 代理——常见于上游要求
-              // 特定 Referer/UA 或不返回 CORS 头，浏览器直连必然失败。
-              if (!(video as any)._firstPartyProxyFallbackDone && !isFirstPartyM3u8Proxy(activeUrl)) {
-                (video as any)._firstPartyProxyFallbackDone = true;
+
+              if (
+                !(video as any)._firstPartyProxyFallbackDone &&
+                !isFirstPartyM3u8Proxy(activeUrl)
+              ) {
                 const proxiedUrl = applyFirstPartyM3u8Proxy(activeUrl);
                 console.warn('直连错误，降级为第一方代理:', proxiedUrl);
+                (video as any)._firstPartyProxyFallbackDone = true;
                 (video as any)._currentHlsUrl = proxiedUrl;
                 (video as any)._consecutiveNetworkErrorCount = 0;
                 hls.loadSource(proxiedUrl);
@@ -4640,10 +4638,6 @@ function PlayPageClient() {
                 return;
               }
 
-              // 旧版/不兼容的代理（例如未实现 m3u8 重写的 Worker）常常不会让 hls.js
-              // 判定为 fatal：分片请求持续失败但清晰度切换/内部重试机制会不断吸收错误，
-              // 播放器只是卡住不报错。这里独立计数非 fatal 的网络错误，达到阈值时
-              // 主动触发降级，而不是干等一个永远不会到来的 fatal 事件。
               if (
                 !data.fatal &&
                 data.type === Hls.ErrorTypes.NETWORK_ERROR &&
@@ -4654,33 +4648,23 @@ function PlayPageClient() {
               ) {
                 const count = ((video as any)._consecutiveNetworkErrorCount || 0) + 1;
                 (video as any)._consecutiveNetworkErrorCount = count;
-                if (count >= 8) {
-                  console.warn(`连续 ${count} 次非致命网络错误，主动降级:`, data.details);
-                  tryFallbackOrGiveUp();
-                }
+                if (count >= 8) tryFallbackOrGiveUp();
                 return;
               }
 
               if (data.fatal) {
                 switch (data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR: {
-                    if (tryFallbackOrGiveUp()) {
-                      break;
-                    }
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    if (tryFallbackOrGiveUp()) break;
                     console.log('网络错误，尝试恢复...');
                     hls.startLoad();
                     break;
-                  }
                   case Hls.ErrorTypes.MEDIA_ERROR:
                     console.log('媒体错误，尝试恢复...');
                     hls.recoverMediaError();
                     break;
                   default:
-                    // OTHER_ERROR / MUX_ERROR / KEY_SYSTEM_ERROR 等非网络类致命错误，
-                    // 仍有可能是代理返回了畸形内容导致的解封装失败，降级一次再放弃。
-                    if (tryFallbackOrGiveUp()) {
-                      break;
-                    }
+                    if (tryFallbackOrGiveUp()) break;
                     console.log('无法恢复的错误');
                     hls.destroy();
                     break;
@@ -5984,12 +5968,9 @@ function PlayPageClient() {
           return;
         }
 
-        // ☁️ 非 m3u8 格式（走原生 <video src>）Worker 代理失败时，自动降级为直连原始地址
-        // m3u8 格式的降级在 customType.m3u8 的 Hls.Events.ERROR 处理里完成，此处跳过避免重复
         if (!artPlayerRef.current._proxyFallbackDone) {
           const rawUrl = stripVideoPlayProxy(videoUrl);
           if (rawUrl && !/\.m3u8(\?|#|$)/i.test(videoUrl)) {
-            console.warn('Worker 代理播放错误，降级为直连:', rawUrl);
             artPlayerRef.current._proxyFallbackDone = true;
             artPlayerRef.current.switchUrl(rawUrl);
           }
@@ -6228,22 +6209,37 @@ function PlayPageClient() {
   return (
     <>
       <PageLayout activePath='/play'>
-      <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20 pb-40 md:pb-safe-bottom'>
-        {/* 第一行：影片标题（小屏幕用，大屏幕在 PlayInfoPanel 里） */}
-        <div className='py-1 lg:hidden'>
-          <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-            {videoTitle || '影片标题'}
+      <div className='flex flex-col gap-2 px-4 pt-1 pb-40 md:gap-3 md:px-5 md:py-3 md:pb-safe-bottom lg:px-[3rem] lg:py-4 2xl:px-20'>
+        {/* 第一行：移动端标题 + 当前内容工具按钮 */}
+        <div className='flex items-center gap-2 py-0.5 lg:hidden'>
+          <h1 className='min-w-0 flex-1 truncate text-xl font-semibold text-gray-900 dark:text-gray-100'>
+            <span className='truncate'>{videoTitle || '影片标题'}</span>
             {totalEpisodes > 1 && (
               <span className='text-gray-500 dark:text-gray-400'>
                 {` > ${detail?.episodes_titles?.[currentEpisodeIndex] || `第 ${currentEpisodeIndex + 1} 集`}`}
               </span>
             )}
           </h1>
+          <div className='flex shrink-0 items-center gap-2 [&>button]:h-10 [&>button]:min-h-10 [&>button]:w-10 [&>button]:justify-center [&>button]:rounded-xl [&>button]:px-0'>
+            <NetDiskButton
+              videoTitle={videoTitle}
+              netdiskLoading={netdiskLoading}
+              netdiskTotal={netdiskTotal}
+              netdiskResults={netdiskResults}
+              onSearch={handleNetDiskSearch}
+              onOpenModal={() => setShowNetdiskModal(true)}
+            />
+            <DownloadButtons
+              downloadEnabled={downloadEnabled}
+              onDownloadClick={() => setShowDownloadEpisodeSelector(true)}
+              onDownloadPanelClick={() => setShowDownloadPanel(true)}
+            />
+          </div>
         </div>
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2'>
           {/* 折叠控制 */}
-          <div className='flex justify-end items-center gap-2 sm:gap-3'>
+          <div className='hidden justify-end items-center gap-2 sm:gap-3 lg:flex'>
             {/* 网盘资源按钮 */}
             <NetDiskButton
               videoTitle={videoTitle}
@@ -6269,7 +6265,7 @@ function PlayPageClient() {
           </div>
 
           <div
-            className={`grid gap-4 lg:h-[500px] xl:h-[650px] 2xl:h-[750px] transition-all duration-300 ease-in-out ${isEpisodeSelectorCollapsed
+            className={`grid gap-2 md:gap-4 lg:h-[500px] xl:h-[650px] 2xl:h-[750px] transition-all duration-300 ease-in-out ${isEpisodeSelectorCollapsed
               ? 'grid-cols-1'
               : 'grid-cols-1 md:grid-cols-4'
               }`}
@@ -6279,10 +6275,10 @@ function PlayPageClient() {
               className={`h-full transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-3'
                 }`}
             >
-              <div className='relative w-full h-[300px] lg:h-full'>
+              <div className='relative w-full aspect-video max-h-[230px] sm:max-h-none lg:h-full lg:max-h-none'>
                 <div
                   ref={artRef}
-                  className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
+                  className='art-mobile-compact bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
                 ></div>
 
                 {/* WebSR 分屏对比分割线 */}
@@ -6368,7 +6364,7 @@ function PlayPageClient() {
 
             {/* 选集和换源 - 在移动端始终显示，在 lg 及以上可折叠 */}
             <div
-              className={`h-[300px] lg:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${isEpisodeSelectorCollapsed
+              className={`min-h-[230px] lg:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${isEpisodeSelectorCollapsed
                 ? 'md:col-span-1 lg:hidden lg:opacity-0 lg:scale-95'
                 : 'md:col-span-1 lg:opacity-100 lg:scale-100'
                 }`}
@@ -6952,8 +6948,9 @@ function PlayPageClient() {
               try {
                 const [, videoId, episode] = episodeUrl.split(':');
                 const nameParam = detail.drama_name ? `&name=${encodeURIComponent(detail.drama_name)}` : '';
+                const sourceParam = shortdramaSource ? `&source=${encodeURIComponent(shortdramaSource)}` : '';
                 const response = await fetch(
-                  `/api/shortdrama/parse?id=${videoId}&episode=${episode}${nameParam}`
+                  `/api/shortdrama/parse?id=${videoId}&episode=${episode}${nameParam}${sourceParam}`
                 );
 
                 if (response.ok) {

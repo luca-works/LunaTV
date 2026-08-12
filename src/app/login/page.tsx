@@ -2,69 +2,14 @@
 
 'use client';
 
-import { AlertCircle, CheckCircle, User, Lock, Sparkles, UserPlus, Send } from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle, User, Lock, Sparkles, Send } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-
-import { CURRENT_VERSION } from '@/lib/version';
-import { checkForUpdates, UpdateStatus } from '@/lib/version_check';
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { OIDCProviderLogo, detectProvider, getProviderButtonStyle, getProviderButtonText } from '@/components/OIDCProviderLogos';
-
-// 版本显示组件
-function VersionDisplay() {
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
-  const [isChecking, setIsChecking] = useState(true);
-
-  useEffect(() => {
-    const checkUpdate = async () => {
-      try {
-        const status = await checkForUpdates();
-        setUpdateStatus(status);
-      } catch (_) {
-        // do nothing
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkUpdate();
-  }, []);
-
-  return (
-    <div
-      className='absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400'
-    >
-      <span className='font-mono'>v{CURRENT_VERSION}</span>
-      {!isChecking && updateStatus !== UpdateStatus.FETCH_FAILED && (
-        <div
-          className={`flex items-center gap-1.5 ${updateStatus === UpdateStatus.HAS_UPDATE
-            ? 'text-yellow-600 dark:text-yellow-400'
-            : updateStatus === UpdateStatus.NO_UPDATE
-              ? 'text-green-600 dark:text-green-400'
-              : ''
-            }`}
-        >
-          {updateStatus === UpdateStatus.HAS_UPDATE && (
-            <>
-              <AlertCircle className='w-3.5 h-3.5' />
-              <span className='font-semibold text-xs'>有新版本</span>
-            </>
-          )}
-          {updateStatus === UpdateStatus.NO_UPDATE && (
-            <>
-              <CheckCircle className='w-3.5 h-3.5' />
-              <span className='font-semibold text-xs'>已是最新</span>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+import { addHomeLoginTransition } from '@/lib/home-loading-transition';
 
 function LoginPageClient() {
   const router = useRouter();
@@ -188,7 +133,7 @@ function LoginPageClient() {
         }
 
         const redirect = searchParams.get('redirect') || '/';
-        router.replace(redirect);
+        router.replace(addHomeLoginTransition(redirect));
       } else if (res.status === 401) {
         setError('密码错误');
       } else {
@@ -332,7 +277,7 @@ function LoginPageClient() {
           </div>
 
           {error && (
-            <div role='alert' className='flex items-center gap-2 p-2.5 sm:p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 animate-shake-in'>
+            <div className='flex items-center gap-2 p-2.5 sm:p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 animate-slide-down'>
               <AlertCircle className='h-4 w-4 text-red-600 dark:text-red-400 shrink-0' />
               <p className='text-xs sm:text-sm text-red-600 dark:text-red-400'>{error}</p>
             </div>
@@ -351,23 +296,6 @@ function LoginPageClient() {
             {loading ? '登录中...' : '立即登录'}
           </button>
 
-          {/* 注册链接 - 仅在非 localStorage 模式下显示 */}
-          {shouldAskUsername && (
-            <div className='mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700'>
-              <p className='text-center text-gray-600 dark:text-gray-400 text-xs sm:text-sm mb-2.5 sm:mb-3'>
-                还没有账户？
-              </p>
-              <Link
-                href='/register'
-                prefetch={true}
-                className='group flex items-center justify-center gap-1.5 sm:gap-2 w-full px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-400 text-xs sm:text-sm font-semibold hover:from-green-100 hover:to-emerald-100 dark:hover:from-green-900/30 dark:hover:to-emerald-900/30 hover:border-green-300 dark:hover:border-green-700 transition-all duration-300 hover:shadow-md hover:scale-[1.02] active:scale-100'
-              >
-                <UserPlus className='w-3.5 h-3.5 sm:w-4 sm:h-4' />
-                <span>立即注册</span>
-                <span className='inline-block transition-transform group-hover:translate-x-1'>→</span>
-              </Link>
-            </div>
-          )}
         </form>
 
         {/* Telegram Magic Link 登录 */}
@@ -494,9 +422,6 @@ function LoginPageClient() {
           </div>
         )}
       </div>
-
-      {/* 版本信息显示 */}
-      <VersionDisplay />
     </div>
   );
 }

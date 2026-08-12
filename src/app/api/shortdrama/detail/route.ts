@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getCacheTime, getConfig } from '@/lib/config';
-import { parseShortDramaEpisode } from '@/lib/shortdrama.client';
+import { parseShortDramaEpisodeServer } from '@/lib/shortdrama.server';
 import { recordRequest, getDbQueryCount, resetDbQueryCount } from '@/lib/performance-monitor';
 
 // 标记为动态路由
@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id');
     const episode = searchParams.get('episode');
     const name = searchParams.get('name'); // 可选：用于备用API
+    const sourceKey = searchParams.get('source') || undefined;
 
     if (!id) {
       const errorResponse = { error: '缺少必要参数: id' };
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     const videoId = parseInt(id);
-    const episodeNum = episode ? parseInt(episode) : 1;
+    const episodeNum = episode ? Math.max(parseInt(episode) - 1, 0) : 0;
 
     if (isNaN(videoId) || isNaN(episodeNum)) {
       const errorResponse = { error: '参数格式错误' };
@@ -82,33 +83,36 @@ export async function GET(request: NextRequest) {
     }
 
     // 先尝试指定集数，如果提供了剧名且配置了备用API则自动fallback
-    let result = await parseShortDramaEpisode(
+    let result = await parseShortDramaEpisodeServer(
       videoId,
       episodeNum,
       true,
       name || undefined,
-      alternativeApiUrl
+      alternativeApiUrl,
+      sourceKey
     );
 
     // 如果失败，尝试其他集数
     if (result.code !== 0 || !result.data || !result.data.totalEpisodes) {
-      result = await parseShortDramaEpisode(
+      result = await parseShortDramaEpisodeServer(
         videoId,
         episodeNum === 1 ? 2 : 1,
         true,
         name || undefined,
-        alternativeApiUrl
+        alternativeApiUrl,
+        sourceKey
       );
     }
 
     // 如果还是失败，尝试第0集
     if (result.code !== 0 || !result.data || !result.data.totalEpisodes) {
-      result = await parseShortDramaEpisode(
+      result = await parseShortDramaEpisodeServer(
         videoId,
         0,
         true,
         name || undefined,
-        alternativeApiUrl
+        alternativeApiUrl,
+        sourceKey
       );
     }
 

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: liveSources
     }, {
-      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' }
+      headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=300' }
     });
   } catch (error) {
     console.error('获取直播源失败:', error);

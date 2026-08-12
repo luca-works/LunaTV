@@ -11,25 +11,15 @@ import stcasc, { ChineseType } from 'switch-chinese';
 // 创建模块级别的繁简转换器实例
 const converter = stcasc();
 
-// 部分源同时提供分享落地页（HTML）和真实的媒体直链，两组集数长度往往相同，
-// 必须优先选带媒体扩展名的分组，否则可能选中无法播放的 HTML 分享页
 const MEDIA_URL_PATTERN = /\.(m3u8|mp4|flv|ts)(\?|#|$)/i;
 
-function isMediaUrlGroup(urls: string[]): boolean {
-  return urls.some((url) => MEDIA_URL_PATTERN.test(url));
-}
-
-// 综合媒体链接优先级和集数长度，判断新分组是否应替换当前分组
 function isBetterEpisodeGroup(
   candidateUrls: string[],
   currentUrls: string[]
 ): boolean {
-  const candidateIsMedia = isMediaUrlGroup(candidateUrls);
-  const currentIsMedia = isMediaUrlGroup(currentUrls);
-
-  if (candidateIsMedia !== currentIsMedia) {
-    return candidateIsMedia;
-  }
+  const candidateIsMedia = candidateUrls.some((url) => MEDIA_URL_PATTERN.test(url));
+  const currentIsMedia = currentUrls.some((url) => MEDIA_URL_PATTERN.test(url));
+  if (candidateIsMedia !== currentIsMedia) return candidateIsMedia;
   return candidateUrls.length > currentUrls.length;
 }
 
@@ -506,10 +496,65 @@ export async function getDetailFromApi(
   apiSite: ApiSite,
   id: string
 ): Promise<SearchResult> {
-  if (apiSite.detail) {
-    return handleSpecialSourceDetail(id, apiSite);
+  const detailMode = apiSite.detail_mode || (apiSite.detail ? 'html' : 'api');
+  const errors: Error[] = [];
+
+  const tryResolver = async (
+    label: string,
+    resolver: () => Promise<SearchResult>
+  ): Promise<SearchResult | null> => {
+    try {
+      const result = await resolver();
+      if (isUsableDetailResult(result)) {
+        return result;
+      }
+      errors.push(new Error(`${label}未返回可播放剧集`));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(new Error(`${label}失败: ${message}`));
+    }
+    return null;
+  };
+
+  const apiResolver = () => handleApiSourceDetail(id, apiSite);
+  const htmlResolver = () => handleSpecialSourceDetail(id, apiSite);
+  const resolverOrder: Array<{
+    label: string;
+    resolver: () => Promise<SearchResult>;
+  }> = [];
+
+  if (detailMode === 'html' && apiSite.detail) {
+    resolverOrder.push({ label: 'HTML 详情', resolver: htmlResolver });
+    resolverOrder.push({ label: 'JSON 详情', resolver: apiResolver });
+  } else {
+    resolverOrder.push({ label: 'JSON 详情', resolver: apiResolver });
+    if (detailMode === 'auto' && apiSite.detail) {
+      resolverOrder.push({ label: 'HTML 详情', resolver: htmlResolver });
+    }
   }
 
+  for (const { label, resolver } of resolverOrder) {
+    const result = await tryResolver(label, resolver);
+    if (result) return result;
+  }
+
+  throw new AggregateError(
+    errors,
+    `详情解析失败: ${errors.map((error) => error.message).join('; ')}`
+  );
+}
+
+function isUsableDetailResult(result: SearchResult): boolean {
+  return (
+    Array.isArray(result.episodes) &&
+    result.episodes.some((url) => /^https?:\/\//i.test(url.trim()))
+  );
+}
+
+async function handleApiSourceDetail(
+  id: string,
+  apiSite: ApiSite
+): Promise<SearchResult> {
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;
 
   const controller = new AbortController();

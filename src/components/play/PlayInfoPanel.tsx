@@ -105,7 +105,7 @@ export default function PlayInfoPanel(props: PlayInfoPanelProps) {
 
       {/* ── Hero 背景图 ── */}
       {bgUrl && (
-        <section className="relative overflow-hidden rounded-t-xl min-h-[360px] sm:min-h-[420px] md:min-h-[520px] lg:min-h-[620px]">
+        <section className="relative overflow-hidden rounded-t-xl min-h-[180px] sm:min-h-[260px] md:min-h-[300px] lg:min-h-[360px] xl:min-h-[400px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={bgUrl} alt={title}
             className="absolute inset-0 w-full h-full object-cover object-top" />
@@ -121,7 +121,7 @@ export default function PlayInfoPanel(props: PlayInfoPanelProps) {
           )}
 
           {/* 内容区 — 右边留出海报宽度 */}
-          <div className="absolute inset-0 z-10 flex flex-col justify-end gap-2.5 p-4 sm:p-6 lg:pr-36 xl:pr-40">
+          <div className="absolute inset-0 z-10 flex flex-col justify-end gap-2 p-4 sm:gap-2.5 sm:p-6 lg:pr-36 xl:pr-40">
 
             {/* 标签行 */}
             <div className="flex flex-wrap items-center gap-1.5">
@@ -168,7 +168,7 @@ export default function PlayInfoPanel(props: PlayInfoPanelProps) {
               <img src={tmdbLogo} alt={title}
                 className="max-h-16 sm:max-h-20 md:max-h-28 w-auto max-w-[60%] object-contain drop-shadow-lg" />
             ) : (
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight line-clamp-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white leading-tight line-clamp-1 sm:line-clamp-2">
                 {title}
               </h1>
             )}

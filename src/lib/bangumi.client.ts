@@ -57,9 +57,6 @@ export async function GetBangumiCalendarData(): Promise<BangumiCalendarData[]> {
 
   try {
     const response = await fetch(buildBangumiProxyUrl('calendar'));
-    if (!response.ok) {
-      throw new Error(`Bangumi proxy returned ${response.status}`);
-    }
     const data = await response.json();
 
     // Validate response is an array

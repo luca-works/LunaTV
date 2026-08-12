@@ -7,11 +7,14 @@ import { db } from '@/lib/db';
 import { AdminConfig } from './admin.types';
 import { DEFAULT_USER_AGENT } from './user-agent';
 
+export type DetailMode = 'api' | 'html' | 'auto';
+
 export interface ApiSite {
   key: string;
   api: string;
   name: string;
   detail?: string;
+  detail_mode?: DetailMode;
 }
 
 export interface LiveCfg {
@@ -95,6 +98,7 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
       existingSource.name = site.name;
       existingSource.api = site.api;
       existingSource.detail = site.detail;
+      existingSource.detail_mode = site.detail_mode;
       // 保留用户手动设置的 from、type、is_adult、disabled 等字段
     } else {
       // 添加新的订阅源
@@ -103,6 +107,7 @@ export function refineConfig(adminConfig: AdminConfig): AdminConfig {
         name: site.name,
         api: site.api,
         detail: site.detail,
+        detail_mode: site.detail_mode,
         from: 'config',
         disabled: false,
         type: 'vod', // 默认为普通视频类型
@@ -211,7 +216,7 @@ async function getInitConfig(configFile: string, subConfig: {
   AutoUpdate: boolean;
   LastCheck: string;
 } = {
-    URL: process.env.NEXT_PUBLIC_SUB_URL || "",
+    URL: "",
     AutoUpdate: false,
     LastCheck: "",
   }): Promise<AdminConfig> {
@@ -238,9 +243,9 @@ async function getInitConfig(configFile: string, subConfig: {
       DoubanImageProxyType:
         process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE || 'server',
       DoubanImageProxy: process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY || '',
-      BangumiApiType: process.env.NEXT_PUBLIC_BANGUMI_API_TYPE || 'cmliussss',
+      BangumiApiType: process.env.NEXT_PUBLIC_BANGUMI_API_TYPE || 'server',
       BangumiApiProxy: process.env.NEXT_PUBLIC_BANGUMI_API_PROXY || '',
-      BangumiImageProxyType: process.env.NEXT_PUBLIC_BANGUMI_IMAGE_PROXY_TYPE || 'cmliussss',
+      BangumiImageProxyType: process.env.NEXT_PUBLIC_BANGUMI_IMAGE_PROXY_TYPE || 'server',
       BangumiImageProxy: process.env.NEXT_PUBLIC_BANGUMI_IMAGE_PROXY || '',
       DisableYellowFilter:
         process.env.NEXT_PUBLIC_DISABLE_YELLOW_FILTER === 'true',
@@ -254,20 +259,12 @@ async function getInitConfig(configFile: string, subConfig: {
       EnableTMDBActorSearch: false, // 默认关闭，需要配置API Key后手动开启
     },
     UserConfig: {
-      AllowRegister: true, // 默认允许注册
+      AllowRegister: false,
       Users: [],
     },
     SourceConfig: [],
     CustomCategories: [],
     LiveConfig: [],
-    TVBoxProxyConfig: {
-      enabled: false,
-      proxyUrl: process.env.NEXT_PUBLIC_CORSAPI_URL || 'https://corsapi.smone.workers.dev',
-    },
-    VideoProxyConfig: {
-      enabled: false,
-      proxyUrl: process.env.NEXT_PUBLIC_CORSAPI_URL || 'https://corsapi.smone.workers.dev',
-    },
   };
 
   // 补充用户信息
@@ -296,6 +293,7 @@ async function getInitConfig(configFile: string, subConfig: {
       name: site.name,
       api: site.api,
       detail: site.detail,
+      detail_mode: site.detail_mode,
       from: 'config',
       disabled: false,
     });
@@ -369,7 +367,7 @@ export function clearConfigCache(): void {
 export async function configSelfCheck(adminConfig: AdminConfig): Promise<AdminConfig> {
   // 确保必要的属性存在和初始化
   if (!adminConfig.UserConfig) {
-    adminConfig.UserConfig = { AllowRegister: true, Users: [] };
+    adminConfig.UserConfig = { AllowRegister: false, Users: [] };
   }
   if (!adminConfig.UserConfig.Users || !Array.isArray(adminConfig.UserConfig.Users)) {
     adminConfig.UserConfig.Users = [];
@@ -446,7 +444,7 @@ export async function configSelfCheck(adminConfig: AdminConfig): Promise<AdminCo
   }
   // 确保 AllowRegister 有默认值
   if (adminConfig.UserConfig.AllowRegister === undefined) {
-    adminConfig.UserConfig.AllowRegister = true;
+    adminConfig.UserConfig.AllowRegister = false;
   }
   if (!adminConfig.SourceConfig || !Array.isArray(adminConfig.SourceConfig)) {
     adminConfig.SourceConfig = [];
@@ -774,6 +772,7 @@ export async function getAvailableApiSites(user?: string): Promise<ApiSite[]> {
       name: s.name,
       api: s.api,
       detail: s.detail,
+      detail_mode: s.detail_mode,
     }));
     return applyVideoProxy(userSites, config);
   }
@@ -796,6 +795,7 @@ export async function getAvailableApiSites(user?: string): Promise<ApiSite[]> {
         name: s.name,
         api: s.api,
         detail: s.detail,
+        detail_mode: s.detail_mode,
       }));
       return applyVideoProxy(tagSites, config);
     }

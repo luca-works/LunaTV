@@ -3,10 +3,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getCacheTime, getConfig } from '@/lib/config';
-import { getDetailFromApi, searchFromApi } from '@/lib/downstream';
+import { searchFromApi } from '@/lib/downstream';
 import { rankSearchResults } from '@/lib/search-ranking';
 import {
   buildResolutionFilterFromSearchParams,
+  decorateSearchResultQuality,
   filterSearchResultsByResolution,
 } from '@/lib/video-quality';
 import { yellowWords } from '@/lib/yellow';
@@ -36,16 +37,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const sourceKey = searchParams.get('source');
-    const ac = (searchParams.get('ac') || '').toLowerCase();
-    const detailId = searchParams.get('ids') || searchParams.get('id') || searchParams.get('vod_id');
-    const wantsDetail = ac === 'detail' || Boolean(detailId);
     const query = searchParams.get('wd');
     const filterParam = searchParams.get('filter') || 'on';
     const strictMode = searchParams.get('strict') === '1';
     const resolutionFilter = buildResolutionFilterFromSearchParams(searchParams);
 
     // 参数验证
-    if (!sourceKey || (!query && !wantsDetail)) {
+    if (!sourceKey || !query) {
       return NextResponse.json(
         {
           code: 400,
@@ -82,41 +80,6 @@ export async function GET(request: NextRequest) {
         },
         { status: 403 }
       );
-    }
-
-    // 处理详情请求 (ac=detail)
-    if (wantsDetail) {
-      if (!detailId) {
-        return NextResponse.json({ code: 400, msg: '缺少详情参数: ids 或 id', list: [] }, { status: 400 });
-      }
-      try {
-        const detail = await getDetailFromApi(
-          { key: targetSource.key, name: targetSource.name, api: targetSource.api, detail: targetSource.detail },
-          detailId,
-        );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const raw = detail as any;
-        const playUrl = formatTvboxPlayUrl(detail.episodes, detail.episodes_titles);
-        return NextResponse.json({
-          code: 1, msg: 'success', page: 1, pagecount: 1, limit: 1, total: 1,
-          list: [{
-            vod_id: detail.id,
-            vod_name: detail.title,
-            vod_pic: detail.poster,
-            vod_remarks: String(raw.remarks || raw.note || raw.remark || '') || detail.resolution || '',
-            vod_year: String(raw.year || ''),
-            vod_area: String(raw.area || ''),
-            vod_actor: String(raw.actor || ''),
-            vod_director: String(raw.director || ''),
-            vod_content: detail.desc || '',
-            type_name: detail.type_name || '',
-            vod_play_from: playUrl ? targetSource.name || 'LunaTV' : '',
-            vod_play_url: playUrl,
-          }],
-        }, { headers: { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300, s-maxage=300' } });
-      } catch (error) {
-        return NextResponse.json({ code: 1, msg: error instanceof Error ? error.message : '详情获取失败', list: [] }, { status: 200 });
-      }
     }
 
     console.log(
@@ -171,12 +134,8 @@ export async function GET(request: NextRequest) {
       console.log(`[TVBox Search Proxy] Applied smart ranking`);
     }
 
-    // 🎬 分辨率过滤（resolution 已在 downstream 解析阶段装饰）
-    if (resolutionFilter.minLevel > 0) {
-      const beforeCount = results.length;
-      results = filterSearchResultsByResolution(results, resolutionFilter);
-      console.log(`[TVBox Search Proxy] Resolution filter (>=${resolutionFilter.minLevel}p): ${beforeCount} → ${results.length}`);
-    }
+    results = results.map((result) => decorateSearchResultQuality(result));
+    results = filterSearchResultsByResolution(results, resolutionFilter);
 
     // ⚡ 严格匹配模式 - 只返回高度相关的结果
     if (strictMode && results.length > 0) {
@@ -237,7 +196,7 @@ export async function GET(request: NextRequest) {
           type_name: r.type_name || '',
           // 保留原始数据以便详情页使用
           vod_play_from: r.episodes ? 'LunaTV' : '',
-          vod_play_url: r.episodes ? formatTvboxPlayUrl(r.episodes, r.episodes_titles) : '',
+          vod_play_url: r.episodes ? r.episodes.join('#') : '',
         };
       }),
     };
@@ -280,20 +239,6 @@ export async function OPTIONS() {
       'Access-Control-Max-Age': '86400',
     },
   });
-}
-
-function formatTvboxPlayUrl(episodes: string[] | undefined, episodeTitles: string[] | undefined = []): string {
-  if (!Array.isArray(episodes) || episodes.length === 0) return '';
-  return episodes
-    .map((url, index) => {
-      const cleanUrl = typeof url === 'string' ? url.trim() : '';
-      if (!cleanUrl) return '';
-      const rawTitle = episodeTitles[index] || '';
-      const title = rawTitle.replace(/[$#]/g, ' ').trim() || `第${index + 1}集`;
-      return `${title}$${cleanUrl}`;
-    })
-    .filter(Boolean)
-    .join('#');
 }
 
 /**

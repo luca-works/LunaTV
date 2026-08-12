@@ -133,10 +133,11 @@ export async function getRecommendedShortDramas(
 // 获取分类短剧列表（分页）
 export async function getShortDramaList(
   category: number,
+  categoryName: string,
   page = 1,
   size = 20
 ): Promise<{ list: ShortDramaItem[]; hasMore: boolean }> {
-  const cacheKey = getCacheKey('lists', { category, page, size });
+  const cacheKey = getCacheKey('lists', { category, categoryName, page, size });
 
   try {
     // 检查缓存
@@ -161,7 +162,7 @@ export async function getShortDramaList(
 
       try {
         // 使用内部 API 代理
-        const apiUrl = `${getApiBase()}/list?categoryId=${category}&page=${page}&size=${size}`;
+        const apiUrl = `${getApiBase()}/list?categoryId=${category}&categoryName=${encodeURIComponent(categoryName)}&page=${page}&size=${size}`;
 
         const response = await fetch(apiUrl);
 

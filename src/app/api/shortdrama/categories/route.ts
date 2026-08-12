@@ -14,6 +14,11 @@ const DEFAULT_SHORT_DRAMA_API = 'https://tyyszyapi.com/api.php/provide/vod';
 // 短剧相关分类的关键词（父分类 + 子分类标签）
 const SHORT_DRAMA_KEYWORDS = ['短剧', '女频恋爱', '反转爽剧', '古装仙侠', '年代穿越', '脑洞悬疑', '现代都市'];
 
+function normalizeCategoryName(name: string): string {
+  const subCategory = SHORT_DRAMA_KEYWORDS.slice(1).find(keyword => name.includes(keyword));
+  return subCategory || '短剧';
+}
+
 // 从单个源获取短剧分类
 async function getCategoriesFromSource(api: string): Promise<{ type_id: number; type_name: string }[]> {
   const response = await fetch(`${api}?ac=list`, {
@@ -43,11 +48,7 @@ async function getCategoriesFromSource(api: string): Promise<{ type_id: number; 
     }));
   }
 
-  // 如果没有找到短剧相关分类，返回所有分类供用户查看
-  return categories.map((cat: any) => ({
-    type_id: cat.type_id,
-    type_name: cat.type_name,
-  }));
+  return [];
 }
 
 // 从配置的短剧源获取分类
@@ -82,11 +83,9 @@ async function getShortDramaCategoriesInternal() {
     });
 
     if (allCategories.length > 0) {
-      // 按 type_id 去重
-      const uniqueCategories = Array.from(
-        new Map(allCategories.map(cat => [`${cat.type_id}_${cat.type_name}`, cat])).values()
-      );
-      return uniqueCategories;
+      // 不同资源站的分类 ID 不一致，按语义名称聚合，ID 只作为前端稳定选择值。
+      const names = Array.from(new Set(allCategories.map(cat => normalizeCategoryName(cat.type_name))));
+      return names.map((type_name, index) => ({ type_id: index + 1, type_name }));
     }
 
     console.log('⚠️ 所有配置的短剧源都未返回分类，回退到默认源');

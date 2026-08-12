@@ -909,7 +909,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       >
         {/* 海报容器 */}
         <div
-          className={`relative aspect-[2/3] overflow-hidden rounded-lg ${origin === 'live' ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80' : ''}`}
+          className={`relative aspect-[2/3] overflow-hidden rounded-xl shadow-sm group-hover:shadow-xl transition-all duration-300 ease-out ${origin === 'live' ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80' : ''}`}
           style={{
             WebkitUserSelect: 'none',
             userSelect: 'none',
@@ -1191,33 +1191,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           {/* 收藏页面：过滤掉99集的占位符显示，只显示真实集数 */}
           {actualEpisodes && actualEpisodes > 1 && !isUpcoming && !(from === 'favorite' && actualEpisodes === 99) && (
             <div
-              className='absolute top-2 left-2 flex items-stretch overflow-hidden rounded-md shadow-lg transition-all duration-300 ease-out group-hover:scale-105 z-30'
-              style={{
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-                WebkitTouchCallout: 'none',
-              } as React.CSSProperties}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
+              className='absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg shadow-md text-white text-[10px] font-medium transition-all duration-300 ease-out z-30 pointer-events-none border border-white/10'
             >
               {currentEpisode ? (
-                <>
-                  {/* 左侧：当前集 - 品牌色背景（红色） */}
-                  <span className='flex items-center bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white'>
-                    EP {String(currentEpisode).padStart(2, '0')}
-                  </span>
-                  {/* 右侧：总集数 - 半透明黑背景 */}
-                  <span className='flex items-center bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-medium text-white/60'>
-                    / {actualEpisodes}
-                  </span>
-                </>
+                <span>EP {String(currentEpisode).padStart(2, '0')} / {actualEpisodes}</span>
               ) : (
-                /* 仅显示总集数 */
-                <span className='flex items-center bg-black/70 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white/80'>
-                  {actualEpisodes} 集
-                </span>
+                <span>{actualEpisodes} 集</span>
               )}
             </div>
           )}
@@ -1529,37 +1508,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
               </button>
             </div>
           )}
+          {/* 内置贴合进度条 - 方案 1 */}
+          {config.showProgress && progress !== undefined && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 w-full bg-black/40 z-20 overflow-hidden">
+              <div
+                className="h-full bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(99,102,241,0.8)]"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
         </div>
-
-        {/* 进度条 */}
-        {config.showProgress && progress !== undefined && (
-          <div
-            className='mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden'
-            style={{
-              WebkitUserSelect: 'none',
-              userSelect: 'none',
-              WebkitTouchCallout: 'none',
-            } as React.CSSProperties}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          >
-            <div
-              className='h-full bg-green-500 transition-all duration-500 ease-out'
-              style={{
-                width: `${progress}%`,
-                WebkitUserSelect: 'none',
-                userSelect: 'none',
-                WebkitTouchCallout: 'none',
-              } as React.CSSProperties}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            />
-          </div>
-        )}
 
         {/* 标题与来源 */}
         <div
@@ -1637,51 +1595,34 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
 
           {config.showSourceName && source_name && (() => {
             // 智能显示source_name：如果有上映状态标记，优先显示状态；否则显示来源
-            let displayText = source_name;
+            let rawText = source_name;
             let themeColor = 'green'; // 默认绿色主题
 
             if (hasReleaseTag && remarks) {
-              // 有上映状态时，根据状态显示不同文本和颜色
               if (remarks.includes('天后上映')) {
-                displayText = remarks; // 显示"X天后上映"
+                rawText = remarks;
                 themeColor = 'orange';
               } else if (remarks.includes('今日上映')) {
-                displayText = '今日上映';
+                rawText = '今日上映';
                 themeColor = 'yellow';
               } else if (remarks.includes('已上映')) {
-                displayText = remarks; // 显示"已上映X天"
+                rawText = remarks;
                 themeColor = 'green';
               }
             }
 
-            // 根据主题颜色设置class
+            // 清理 - 与 🎬 冗余符号
+            const cleanText = rawText.replace(/[-🎬]/g, '').trim() || rawText;
+
             const colorClasses = {
-              green: 'group-hover:border-green-500/80 group-hover:text-green-600 dark:group-hover:text-green-400 group-hover:shadow-green-500/20',
-              orange: 'group-hover:border-orange-500/80 group-hover:text-orange-600 dark:group-hover:text-orange-400 group-hover:shadow-orange-500/20',
-              yellow: 'group-hover:border-yellow-500/80 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 group-hover:shadow-yellow-500/20',
-            }[themeColor];
-
-            const bgGradient = {
-              green: 'group-hover:via-green-50/80 dark:group-hover:via-green-500/20',
-              orange: 'group-hover:via-orange-50/80 dark:group-hover:via-orange-500/20',
-              yellow: 'group-hover:via-yellow-50/80 dark:group-hover:via-yellow-500/20',
-            }[themeColor];
-
-            const dotColor = {
-              green: 'group-hover:bg-green-500 dark:group-hover:bg-green-400 group-hover:shadow-[0_0_8px_rgba(16,185,129,0.6)]',
-              orange: 'group-hover:bg-orange-500 dark:group-hover:bg-orange-400 group-hover:shadow-[0_0_8px_rgba(249,115,22,0.6)]',
-              yellow: 'group-hover:bg-yellow-500 dark:group-hover:bg-yellow-400 group-hover:shadow-[0_0_8px_rgba(234,179,8,0.6)]',
-            }[themeColor];
-
-            const iconColor = {
-              green: 'group-hover:text-green-500 dark:group-hover:text-green-400',
-              orange: 'group-hover:text-orange-500 dark:group-hover:text-orange-400',
-              yellow: 'group-hover:text-yellow-500 dark:group-hover:text-yellow-400',
+              green: 'group-hover:border-green-500/80 group-hover:text-green-600 dark:group-hover:text-green-400',
+              orange: 'group-hover:border-orange-500/80 group-hover:text-orange-600 dark:group-hover:text-orange-400',
+              yellow: 'group-hover:border-yellow-500/80 group-hover:text-yellow-600 dark:group-hover:text-yellow-400',
             }[themeColor];
 
             return (
               <div
-                className='flex items-center justify-center mt-2'
+                className='flex items-center justify-center mt-1.5'
                 style={{
                   WebkitUserSelect: 'none',
                   userSelect: 'none',
@@ -1693,31 +1634,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                 }}
               >
                 <span
-                  className={`relative inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border border-gray-300/60 dark:border-gray-600/60 text-gray-600 dark:text-gray-400 transition-all duration-300 ease-out overflow-hidden group-hover:shadow-md group-hover:scale-105 ${colorClasses}`}
-                  style={{
-                    WebkitUserSelect: 'none',
-                    userSelect: 'none',
-                    WebkitTouchCallout: 'none',
-                  } as React.CSSProperties}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium rounded-full border border-gray-200/80 dark:border-gray-700/80 text-gray-500 dark:text-gray-400 bg-gray-50/60 dark:bg-gray-800/60 transition-all duration-200 ${colorClasses}`}
                 >
-                  {/* 背景渐变效果 */}
-                  <span className={`absolute inset-0 bg-linear-to-r from-transparent via-green-50/0 to-transparent dark:via-green-500/0 transition-all duration-300 ${bgGradient}`}></span>
-
-                  {/* 左侧装饰点 */}
-                  <span className={`relative w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 transition-all duration-300 ${dotColor}`}></span>
-
                   {origin === 'live' && (
-                    <Radio size={12} className={`relative inline-block transition-all duration-300 ${iconColor}`} />
+                    <Radio size={11} className="inline-block text-green-500" />
                   )}
-
-                  <span className='relative font-semibold'>{displayText}</span>
-
-                  {/* 右侧装饰点 */}
-                  <span className={`relative w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 transition-all duration-300 ${dotColor}`}></span>
+                  <span className='font-medium'>{cleanText}</span>
                 </span>
               </div>
             );

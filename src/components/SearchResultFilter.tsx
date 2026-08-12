@@ -243,4 +243,3 @@ const SearchResultFilter: React.FC<SearchResultFilterProps> = ({ categories, val
 
 export default SearchResultFilter;
 
-

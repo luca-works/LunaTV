@@ -1,7 +1,7 @@
 'use client';
 
 import { useVirtualizer, type VirtualItem } from '@tanstack/react-virtual';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DOMErrorBoundary } from './DOMErrorBoundary';
 
 interface VirtualGridProps<T> {
@@ -88,20 +88,6 @@ export default function VirtualGrid<T>({
 }: VirtualGridProps<T>) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(3);
-  const [scrollMargin, setScrollMargin] = useState(0);
-
-  // Track parentRef's offsetTop so virtualizer knows where the container starts
-  // relative to the body scroll origin. Must update after every layout change
-  // (filters expanding/collapsing, responsive breakpoints, etc.).
-  useLayoutEffect(() => {
-    const el = parentRef.current;
-    if (!el) return;
-    const update = () => setScrollMargin(el.offsetTop);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(document.body);
-    return () => ro.disconnect();
-  }, []);
 
   // Detect column count from a hidden probe row that shares the same grid CSS
   const probeRef = useRef<HTMLDivElement>(null);
@@ -110,8 +96,8 @@ export default function VirtualGrid<T>({
     if (!probeRef.current) return;
     const style = window.getComputedStyle(probeRef.current);
     const cols = style.gridTemplateColumns.split(' ').length;
-    if (cols > 0) setColumns(prev => (cols !== prev ? cols : prev));
-  }, []);
+    if (cols > 0 && cols !== columns) setColumns(cols);
+  }, [columns]);
 
   useEffect(() => {
     detectColumns();
@@ -135,10 +121,8 @@ export default function VirtualGrid<T>({
     getScrollElement: () => document.body,
     estimateSize: () => estimateRowHeight,
     overscan,
-    scrollMargin,
     initialMeasurementsCache: initialSnapshot?.measurements,
     initialOffset: initialSnapshot?.scrollOffset,
-    useScrollendEvent: true,
   });
 
   const virtualRows = virtualizer.getVirtualItems();
@@ -155,7 +139,11 @@ export default function VirtualGrid<T>({
 
     const persist = () => {
       const v = virtualizerRef.current;
-      const measurements = v.takeSnapshot();
+      // takeSnapshot() is the 3.15+ API; fall back to measurementsCache if absent.
+      const measurements =
+        typeof v.takeSnapshot === 'function'
+          ? v.takeSnapshot()
+          : (v as unknown as { measurementsCache: VirtualItem[] }).measurementsCache;
       if (!measurements || measurements.length === 0) return;
 
       saveSnapshot(restoreKey, {
@@ -230,7 +218,7 @@ export default function VirtualGrid<T>({
             top: 0,
             left: 0,
             width: '100%',
-            transform: `translateY(${(virtualRows[0]?.start ?? 0) - scrollMargin}px)`,
+            transform: `translateY(${virtualRows[0]?.start ?? 0}px)`,
           }}
         >
           {virtualRows.map((virtualRow) => {

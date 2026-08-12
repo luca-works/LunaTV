@@ -188,9 +188,9 @@ function DoubanPageClient() {
     doubanListOptions(type, primarySelection, secondarySelection, multiLevelValues, selectedWeekday, customCategories)
   );
 
-  // 扁平化所有页面数据，过滤掉 null/undefined 项
+  // 扁平化所有页面数据
   const allItems = useMemo(
-    () => data?.pages.flatMap((page) => page.list).filter((item): item is DoubanItem => !!item?.id) ?? [],
+    () => data?.pages.flatMap((page) => page.list) ?? [],
     [data]
   );
 

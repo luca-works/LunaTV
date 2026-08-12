@@ -10,34 +10,7 @@ import { useEffect } from 'react';
 export function GlobalDOMErrorHandler() {
   useEffect(() => {
     const sendCrashReport = (data: any) => {
-      const payload = JSON.stringify({
-        ...data,
-        // 添加更多诊断信息
-        browserInfo: {
-          language: navigator.language,
-          languages: navigator.languages,
-          platform: navigator.platform,
-          vendor: navigator.vendor,
-          cookieEnabled: navigator.cookieEnabled,
-        },
-        documentInfo: {
-          readyState: document.readyState,
-          visibilityState: document.visibilityState,
-          title: document.title,
-        },
-        windowInfo: {
-          innerWidth: window.innerWidth,
-          innerHeight: window.innerHeight,
-          devicePixelRatio: window.devicePixelRatio,
-        },
-        // 检测可能的翻译插件特征
-        translationDetection: {
-          hasGoogleTranslate: !!document.querySelector('iframe[src*="translate.google"]'),
-          hasTranslateTag: !!document.querySelector('html[translate]'),
-          hasFontTags: document.getElementsByTagName('font').length > 0,
-          hasTranslateClass: !!document.querySelector('[class*="translated"]'),
-        },
-      });
+      const payload = JSON.stringify(data);
       // 使用 sendBeacon 优先（更可靠），降级到 fetch
       const sent = navigator.sendBeacon?.('/api/crash-report', new Blob([payload], { type: 'application/json' }));
 

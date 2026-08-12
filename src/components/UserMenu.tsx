@@ -25,19 +25,15 @@ import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
-import { CURRENT_VERSION } from '@/lib/version';
-import { checkForUpdates, UpdateStatus } from '@/lib/version_check';
 import type { PlayRecord, Favorite } from '@/lib/types';
 
 import { useDownload } from '@/contexts/DownloadContext';
 
-import { VersionPanel } from './VersionPanel';
 import VideoCard from './VideoCard';
 import { SettingsPanel } from './SettingsPanel';
 import {
   useWatchRoomConfigQuery,
   useServerConfigQuery,
-  useVersionCheckQuery,
   usePlayRecordsQuery,
   useFavoritesQuery,
   useChangePasswordMutation,
@@ -56,7 +52,6 @@ export const UserMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isVersionPanelOpen, setIsVersionPanelOpen] = useState(false);
   const [isWatchingUpdatesOpen, setIsWatchingUpdatesOpen] = useState(false);
   const [isContinueWatchingOpen, setIsContinueWatchingOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
@@ -154,9 +149,6 @@ export const UserMenu: React.FC = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
-  // 🚀 TanStack Query - 版本检查
-  const { data: updateStatus = null, isLoading: isChecking } = useVersionCheckQuery();
-
   // 数据查询条件
   const dataQueryEnabled = typeof window !== 'undefined' && !!authInfo?.username && storageType !== 'localstorage';
 
@@ -190,9 +182,6 @@ export const UserMenu: React.FC = () => {
   }, []);
 
   // 🚀 观影室配置和下载配置由 TanStack Query 自动管理
-
-  // 🚀 版本检查由 TanStack Query 自动管理
-
 
   const handleMenuClick = async () => {
     const willOpen = !isOpen;
@@ -611,33 +600,6 @@ export const UserMenu: React.FC = () => {
             <span className='font-medium'>登出</span>
           </button>
 
-          {/* 分割线 */}
-          <div className='my-1 border-t border-gray-200 dark:border-gray-700'></div>
-
-          {/* 版本信息 */}
-          <button
-            onClick={() => {
-              setIsVersionPanelOpen(true);
-              handleCloseMenu();
-            }}
-            className='w-full px-3 py-2 text-center flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-xs'
-          >
-            <div className='flex items-center gap-1'>
-              <span className='font-mono'>v{CURRENT_VERSION}</span>
-              {!isChecking &&
-                updateStatus &&
-                updateStatus !== UpdateStatus.FETCH_FAILED && (
-                  <div
-                    className={`w-2 h-2 rounded-full -translate-y-2 ${updateStatus === UpdateStatus.HAS_UPDATE
-                      ? 'bg-yellow-500'
-                      : updateStatus === UpdateStatus.NO_UPDATE
-                        ? 'bg-green-400'
-                        : ''
-                      }`}
-                  ></div>
-                )}
-            </div>
-          </button>
         </div>
       </div>
     </>
@@ -1189,8 +1151,8 @@ export const UserMenu: React.FC = () => {
 
           <User className='w-full h-full relative z-10 group-hover:scale-110 transition-transform duration-300' />
         </button>
-        {/* 统一更新提醒点：版本更新或剧集更新都显示橙色点 */}
-        {((updateStatus === UpdateStatus.HAS_UPDATE) || (hasActualUpdates && totalUpdates > 0)) && (
+        {/* 更新提醒点 */}
+        {hasActualUpdates && totalUpdates > 0 && (
           <div className='absolute top-[2px] right-[2px] w-2 h-2 bg-yellow-500 rounded-full animate-pulse shadow-lg shadow-yellow-500/50'></div>
         )}
       </div>
@@ -1223,11 +1185,6 @@ export const UserMenu: React.FC = () => {
         mounted &&
         createPortal(favoritesPanel, document.body)}
 
-      {/* 版本面板 */}
-      <VersionPanel
-        isOpen={isVersionPanelOpen}
-        onClose={() => setIsVersionPanelOpen(false)}
-      />
     </>
   );
 };

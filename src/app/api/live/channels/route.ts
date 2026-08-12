@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: channelsWithEpgLogos
     }, {
-      headers: { 'Cache-Control': 'public, max-age=300, s-maxage=600' }
+      headers: { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=300' }
     });
   } catch (error) {
     return NextResponse.json(

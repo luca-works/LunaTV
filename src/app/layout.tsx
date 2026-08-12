@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import nextDynamic from 'next/dynamic';
+import { Inter } from 'next/font/google';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { Toaster } from 'sonner';
@@ -13,7 +13,6 @@ import { getConfig } from '@/lib/config';
 
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import { GlobalDOMErrorHandler } from '../components/GlobalDOMErrorHandler';
-import { DOMErrorBoundary } from '../components/DOMErrorBoundary';
 import { ChunkErrorGuard } from '../components/ChunkErrorGuard';
 import NavigationShell from '../components/NavigationShell';
 import { SiteProvider } from '../components/SiteProvider';
@@ -22,21 +21,20 @@ import { WatchRoomProvider } from '../components/WatchRoomProvider';
 import { DownloadProvider } from '../contexts/DownloadContext';
 import { GlobalCacheProvider } from '../contexts/GlobalCacheContext';
 import QueryProvider from '../components/QueryProvider';
-import { CinematicLoadingFallback } from '../components/CinematicLoadingFallback';
 
-// 懒加载非关键 UI 组件，减少首屏 JS 体积（代码分割）
-// 未设置 ssr: false，保持服务端渲染兼容性
 const TranslationWarningToast = nextDynamic(() =>
-  import('../components/TranslationWarningToast').then((m) => m.TranslationWarningToast)
+  import('../components/TranslationWarningToast').then((module) => module.TranslationWarningToast)
 );
 const SessionTracker = nextDynamic(() =>
-  import('../components/SessionTracker').then((m) => m.SessionTracker)
+  import('../components/SessionTracker').then((module) => module.SessionTracker)
 );
 const RouteWarmup = nextDynamic(() => import('../components/RouteWarmup'));
 const DownloadPanel = nextDynamic(() =>
-  import('../components/download/DownloadPanel').then((m) => m.DownloadPanel)
+  import('../components/download/DownloadPanel').then((module) => module.DownloadPanel)
 );
-const ChatFloatingWindow = nextDynamic(() => import('../components/watch-room/ChatFloatingWindow'));
+const ChatFloatingWindow = nextDynamic(() =>
+  import('../components/watch-room/ChatFloatingWindow')
+);
 
 const inter = Inter({ subsets: ['latin'] });
 export const dynamic = 'force-dynamic';
@@ -161,7 +159,6 @@ export default async function RootLayout({
         />
         <meta name='color-scheme' content='light dark' />
         <meta name='google' content='notranslate' />
-        {/* iOS PWA 沉浸式状态栏：manifest.json 里的同名字段对 Safari 无效，必须通过 meta 标签设置 */}
         <meta name='apple-mobile-web-app-capable' content='yes' />
         <meta name='apple-mobile-web-app-status-bar-style' content='black-translucent' />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
@@ -177,11 +174,6 @@ export default async function RootLayout({
         translate='no'
         className={`${inter.className} min-h-screen bg-white text-gray-900 dark:bg-black dark:text-gray-200`}
       >
-        {/*
-          iOS 沉浸式状态栏（black-translucent）下，状态栏图标固定为白色，
-          不随亮/暗主题切换。用一条固定深色条带盖住状态栏区域，
-          确保任何主题下时间/电量图标都清晰可读。安全区外的设备该高度为 0，不受影响。
-        */}
         <div
           className='fixed top-0 left-0 right-0 z-1000 bg-black md:hidden'
           style={{ height: 'env(safe-area-inset-top)' }}
@@ -207,15 +199,9 @@ export default async function RootLayout({
                     {/* 主内容区域 - 只有这部分会在路由切换时重新渲染 */}
                     <main className='w-full min-h-screen pt-[calc(44px+env(safe-area-inset-top))] md:pt-16 pb-16 md:pb-8'>
                       <div className='w-full max-w-[2560px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 2xl:px-20'>
-                        <DOMErrorBoundary componentName="PageContent">
-                          <Suspense fallback={
-                            <div className="fixed inset-0 z-50">
-                              <CinematicLoadingFallback />
-                            </div>
-                          }>
-                            {children}
-                          </Suspense>
-                        </DOMErrorBoundary>
+                        <Suspense fallback={null}>
+                          {children}
+                        </Suspense>
                       </div>
                     </main>
                     <GlobalErrorIndicator />

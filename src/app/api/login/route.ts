@@ -16,16 +16,12 @@ const STORAGE_TYPE =
     | 'sqlite'
     | undefined) || 'localstorage';
 
-// 登录暴力破解限流：同一 IP 在时间窗口内密码错误次数超限则直接拒绝，
-// 不等数据库/密码比较，避免 IP 被无限次尝试穷举密码。
 const LOGIN_RATE_LIMIT = 5;
-const LOGIN_RATE_WINDOW_MS = 30 * 60 * 1000; // 30 分钟
+const LOGIN_RATE_WINDOW_SECONDS = 30 * 60;
 
 function getClientIP(request: NextRequest): string {
   const forwardedFor = request.headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
-  }
+  if (forwardedFor) return forwardedFor.split(',')[0].trim();
   return (
     request.headers.get('x-real-ip') ||
     request.headers.get('cf-connecting-ip') ||
@@ -34,27 +30,21 @@ function getClientIP(request: NextRequest): string {
 }
 
 async function isLoginRateLimited(ip: string): Promise<boolean> {
-  // localstorage 模式没有持久化存储（db.storage 为 null），限流无处记录，直接跳过
   if (STORAGE_TYPE === 'localstorage') return false;
-
-  const key = `login-rate-limit:${ip}`;
   try {
-    const currentCount = (await db.getCache(key)) || 0;
-    return currentCount >= LOGIN_RATE_LIMIT;
+    return ((await db.getCache(`login-rate-limit:${ip}`)) || 0) >= LOGIN_RATE_LIMIT;
   } catch (error) {
     console.error('登录限流检查失败:', error);
-    // 数据库故障时不能因此锁死正常登录，fail-open
     return false;
   }
 }
 
 async function recordLoginFailure(ip: string): Promise<void> {
   if (STORAGE_TYPE === 'localstorage') return;
-
   const key = `login-rate-limit:${ip}`;
   try {
     const currentCount = (await db.getCache(key)) || 0;
-    await db.setCache(key, currentCount + 1, Math.ceil(LOGIN_RATE_WINDOW_MS / 1000));
+    await db.setCache(key, currentCount + 1, LOGIN_RATE_WINDOW_SECONDS);
   } catch (error) {
     console.error('登录失败计数写入失败:', error);
   }

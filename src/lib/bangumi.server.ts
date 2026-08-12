@@ -54,9 +54,6 @@ export async function GetBangumiCalendarData(): Promise<BangumiCalendarData[]> {
     }
 
     const data = await response.json();
-    if (!Array.isArray(data)) {
-      throw new Error('Bangumi API returned non-array data');
-    }
     return data;
   } catch (error) {
     console.error('获取Bangumi日历数据失败:', error);

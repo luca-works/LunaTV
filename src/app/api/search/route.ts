@@ -9,6 +9,7 @@ import { generateSearchVariants } from '@/lib/downstream';
 import { recordRequest, getDbQueryCount, resetDbQueryCount } from '@/lib/performance-monitor';
 import {
   buildResolutionFilterFromSearchParams,
+  decorateSearchResultQuality,
   filterSearchResultsByResolution,
 } from '@/lib/video-quality';
 import { yellowWords } from '@/lib/yellow';
@@ -107,7 +108,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 分辨率过滤（resolution 已在 downstream 解析阶段装饰）
+    // 分辨率推断 + 过滤
+    flattenedResults = flattenedResults.map((r) => decorateSearchResultQuality(r));
     flattenedResults = filterSearchResultsByResolution(flattenedResults, resolutionFilter);
     const cacheTime = await getCacheTime();
 

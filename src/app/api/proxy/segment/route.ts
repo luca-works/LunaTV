@@ -52,7 +52,6 @@ export async function GET(request: Request) {
   }
 
   const config = await getConfig();
-  // 点播场景不携带 moontv-source（该参数只用于直播源的 UA 定制），此时使用默认浏览器 UA。
   let ua = DEFAULT_USER_AGENT;
   if (source) {
     const liveSource = config.LiveConfig?.find((s: any) => s.key === source);

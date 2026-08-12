@@ -10,7 +10,7 @@ import { useQuery, queryOptions } from '@tanstack/react-query';
 import {
   BangumiCalendarData,
 } from '@/lib/bangumi.client';
-import { cleanExpiredCache, clearRecommendsCache } from '@/lib/shortdrama-cache';
+import { cleanExpiredCache } from '@/lib/shortdrama-cache';
 import { ShortDramaItem, ReleaseCalendarItem } from '@/lib/types';
 import { useClearFavoritesMutation } from '@/hooks/useFavoritesMutations';
 import { useClearRemindersMutation } from '@/hooks/useRemindersMutations';
@@ -19,6 +19,7 @@ import { useTMDBLogos } from '@/hooks/useTMDBLogo';
 import { getDoubanDetails } from '@/lib/douban.client';
 import { DoubanItem } from '@/lib/types';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { HOME_LOGIN_TRANSITION_PARAM } from '@/lib/home-loading-transition';
 import { CinematicLoadingFallback } from '@/components/CinematicLoadingFallback';
 import { useFavoritesQuery } from '@/hooks/useFavoritesQuery';
 import { usePlayRecordsQuery } from '@/hooks/usePlayRecordsQuery';
@@ -132,7 +133,7 @@ const allFavoritesOptions = () => favoritesQueryOptions;
 const allPlayRecordsOptions = () => playRecordsQueryOptions;
 const allRemindersOptions = () => remindersQueryOptions;
 
-function HomeClient({ initialConfig }: {
+function HomeClient({ initialConfig, showLoginTransition = false }: {
   initialConfig: {
     showHeroBanner: boolean;
     showContinueWatching: boolean;
@@ -142,7 +143,8 @@ function HomeClient({ initialConfig }: {
     showNewAnime: boolean;
     showHotVariety: boolean;
     showHotShortDramas: boolean;
-  }
+  };
+  showLoginTransition?: boolean;
 }) {
   // 🎯 优化：使用 useTransition 让 tab 切换不阻塞 UI
   const [isPending, startTransition] = useTransition();
@@ -298,7 +300,7 @@ function HomeClient({ initialConfig }: {
     return dataToUse;
   }, [homeData?.hotShortDramas, state.hotShortDramas, homeFetching]);
 
-  const bangumiCalendarData = Array.isArray(homeData?.bangumiCalendar) ? homeData.bangumiCalendar : [];
+  const bangumiCalendarData = homeData?.bangumiCalendar || [];
 
   // 🚀 Memoize HeroBanner items to prevent unnecessary re-renders
   // HeroBanner uses React.memo, but items array is recreated on every render
@@ -388,6 +390,15 @@ function HomeClient({ initialConfig }: {
   // 这确保用户看到的是完整加载好的页面，而不是部分内容逐渐出现
   // 参考 TanStack Query 官方文档 useQueries combine 示例
   const loading = homeLoading;
+
+  // 登录过渡只消费一次；普通刷新没有该显式标记，不再挂载全屏加载层。
+  useEffect(() => {
+    if (!showLoginTransition) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete(HOME_LOGIN_TRANSITION_PARAM);
+    window.history.replaceState(window.history.state, '', url.toString());
+  }, [showLoginTransition]);
 
   // 🚀 Web Worker引用
   const workerRef = useRef<Worker | null>(null);
@@ -582,9 +593,6 @@ function HomeClient({ initialConfig }: {
   useEffect(() => {
     // 清理过期缓存
     cleanExpiredCache().catch(console.error);
-
-    // 清除可能缓存了空数据的短剧推荐缓存
-    clearRecommendsCache().catch(console.error);
 
     // 🔥 配置已经从服务端传入，不需要客户端再次获取
 
@@ -810,7 +818,7 @@ function HomeClient({ initialConfig }: {
   // 🔥 Show cinematic loading screen while data is being fetched
   // This ensures users see the beautiful loading animation instead of skeleton screens
   // 🔥 Use overlay instead of unmounting to prevent component remount issues
-  const showCinematicLoading = loading;
+  const showCinematicLoading = showLoginTransition && loading;
 
   return (
     <PageLayout>
@@ -825,38 +833,6 @@ function HomeClient({ initialConfig }: {
       <TelegramWelcomeModal />
 
       <div className='overflow-visible -mt-6 md:mt-0 pb-32 md:pb-safe-bottom'>
-        {/* 欢迎横幅 - 现代化精简设计 */}
-        <div className='mb-6 relative overflow-hidden rounded-xl bg-linear-to-r from-blue-500/90 via-purple-500/90 to-pink-500/90 backdrop-blur-sm shadow-xl border border-white/20'>
-          <div className='relative p-4 sm:p-5'>
-            {/* 动态渐变背景 */}
-            <div className='absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-black/5'></div>
-
-            <div className='relative z-10 flex items-center justify-between gap-4'>
-              <div className='flex-1 min-w-0'>
-                <h2 className='text-lg sm:text-xl font-bold text-white mb-1 flex items-center gap-2 flex-wrap'>
-                  <span>
-                    {greeting}
-                    {username && '，'}
-                  </span>
-                  {username && (
-                    <span className='text-yellow-300 font-semibold'>
-                      {username}
-                    </span>
-                  )}
-                  <span className='inline-block animate-wave origin-bottom-right'>👋</span>
-                </h2>
-                <p className='text-sm text-white/90'>
-                  发现更多精彩影视内容 ✨
-                </p>
-              </div>
-
-              {/* 装饰图标 - 更小更精致 */}
-              <div className='hidden md:flex items-center justify-center shrink-0 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20'>
-                <Film className='w-6 h-6 text-white' />
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* 顶部 Tab 切换 - AI 按钮已移至右上角导航栏 */}
         <div className='mb-8 flex items-center justify-center'>
@@ -1312,6 +1288,8 @@ function HomeClient({ initialConfig }: {
                     showControls={true}
                     showIndicators={true}
                     enableVideo={enableVideo}
+                    greeting={greeting}
+                    username={state.username || authInfo?.username}
                   />
                 </section>
               )}

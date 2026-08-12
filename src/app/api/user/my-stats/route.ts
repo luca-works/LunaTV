@@ -307,28 +307,30 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 收集 IP 和设备信息（地理位置查询较慢，不阻塞响应）
+    // 地理位置查询和写库放到响应之后，避免登录跳转被外部 API 拖慢
     const ip = getClientIp(request);
     const ua = request.headers.get('user-agent') || '';
     const { device, browser, os } = parseUserAgent(ua);
-
-    // 获取当前用户统计数据（用于立即返回 loginCount，实际计数仍由 updateUserLoginStats 落库）
     const currentStats = await db.getUserPlayStat(authInfo.username);
     const nextLoginCount = (currentStats.loginCount || 0) + 1;
 
-    // 响应返回后再查地理位置、写数据库，避免登录跳转被外部 API 拖慢
     after(async () => {
       try {
         const location = await getIpLocation(ip);
         const loginMeta = { ip, location, device, browser, os };
-        await db.updateUserLoginStats(authInfo.username, loginTime, nextLoginCount === 1, loginMeta);
+        await db.updateUserLoginStats(
+          authInfo.username,
+          loginTime,
+          nextLoginCount === 1,
+          loginMeta
+        );
         console.log('用户登入统计已保存到数据库:', {
           username: authInfo.username,
           loginTime,
           ip,
           location,
           device,
-          isFirstLogin: nextLoginCount === 1
+          isFirstLogin: nextLoginCount === 1,
         });
       } catch (saveError) {
         console.error('保存登入统计失败:', saveError);

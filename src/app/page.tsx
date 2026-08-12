@@ -2,11 +2,24 @@
 
 import { Suspense } from 'react';
 import { getConfig } from '@/lib/config';
+import {
+  HOME_LOGIN_TRANSITION_PARAM,
+  isHomeLoginTransition,
+} from '@/lib/home-loading-transition';
 import HomeClient from './HomeClient';
 import { CinematicLoadingFallback } from '@/components/CinematicLoadingFallback';
 
 // 🔥 Server Component - 获取配置并传递给客户端
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const showLoginTransition = isHomeLoginTransition(
+    resolvedSearchParams[HOME_LOGIN_TRANSITION_PARAM]
+  );
+
   // 🔥 在服务端获取配置
   const config = await getConfig();
   const homePageConfig = config.HomePageConfig || {
@@ -25,8 +38,11 @@ export default async function Home() {
   // 客户端的 useHomePageQueries 会根据配置条件性地获取数据
 
   return (
-    <Suspense fallback={<CinematicLoadingFallback />}>
-      <HomeClient initialConfig={homePageConfig} />
+    <Suspense fallback={showLoginTransition ? <CinematicLoadingFallback /> : null}>
+      <HomeClient
+        initialConfig={homePageConfig}
+        showLoginTransition={showLoginTransition}
+      />
     </Suspense>
   );
 }

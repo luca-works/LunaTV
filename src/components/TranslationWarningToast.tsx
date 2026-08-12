@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 /**
  * 检测并提示用户关闭浏览器翻译功能
@@ -18,7 +18,6 @@ export function TranslationWarningToast() {
       return;
     }
 
-    let errorCount = 0;
     const ERROR_THRESHOLD = 3; // 3次错误后显示提示
     const TIME_WINDOW = 60000; // 60秒内
 

@@ -35,7 +35,7 @@ export function TelegramAuthConfig({ config, onSave }: TelegramAuthConfigProps) 
     setSaving(true);
     setMessage(null);
     try {
-      await onSave(localConfig);
+      await onSave({ ...localConfig, autoRegister: false });
       setMessage({ type: 'success', text: '保存成功' });
       setHasChanges(false);
       setTimeout(() => setMessage(null), 3000);
@@ -71,7 +71,6 @@ export function TelegramAuthConfig({ config, onSave }: TelegramAuthConfigProps) 
             <ol className='list-decimal list-inside space-y-1 ml-2'>
               <li>与 <a href='https://t.me/botfather' target='_blank' rel='noopener noreferrer' className='underline hover:text-blue-600'>@BotFather</a> 对话创建 Bot</li>
               <li>复制 Bot Token 和 Bot Username 填入下方</li>
-              <li>启用自动注册（推荐）</li>
               <li>启用配置并保存</li>
             </ol>
             <p className='text-xs text-blue-600 dark:text-blue-300 mt-2'>
@@ -158,36 +157,6 @@ export function TelegramAuthConfig({ config, onSave }: TelegramAuthConfigProps) 
           </p>
         </div>
       </div>
-
-      {/* 用户管理配置 */}
-      <div className='space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700'>
-        <h3 className='text-sm font-semibold text-gray-900 dark:text-gray-100'>用户管理</h3>
-
-        <div className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg'>
-          <div>
-            <label htmlFor='autoRegister' className='text-sm font-medium text-gray-900 dark:text-gray-100'>
-              自动注册新用户
-            </label>
-            <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-              首次通过 Telegram 登录的用户将自动创建账号
-            </p>
-          </div>
-          <button
-            type='button'
-            onClick={() => setLocalConfig({ ...localConfig, autoRegister: !localConfig.autoRegister })}
-            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-              localConfig.autoRegister ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                localConfig.autoRegister ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-
 
       {/* 消息提示 */}
       {message && (

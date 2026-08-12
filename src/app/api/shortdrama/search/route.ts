@@ -17,7 +17,8 @@ async function searchFromSource(
   api: string,
   query: string,
   page: number,
-  size: number
+  size: number,
+  sourceKey?: string
 ) {
   // Step 1: 获取分类列表，找到短剧相关分类的所有ID
   const listUrl = `${api}?ac=list`;
@@ -82,6 +83,7 @@ async function searchFromSource(
     author: item.vod_actor || '',
     backdrop: item.vod_pic_slide || item.vod_pic || '',
     vote_average: parseFloat(item.vod_score) || 0,
+    source_key: sourceKey,
   }));
 
   return {
@@ -117,7 +119,7 @@ async function searchShortDramasInternal(
     // 有配置短剧源，聚合所有源的搜索结果
     const results = await Promise.allSettled(
       shortDramaSources.map(source =>
-        searchFromSource(source.api, query, page, size)
+        searchFromSource(source.api, query, page, size, source.key)
       )
     );
 

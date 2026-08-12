@@ -253,12 +253,7 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
                     {item.label}
                   </span>
 
-                  {/* Bottom active border */}
-                  {active && (
-                    <div
-                      className={`absolute bottom-0 left-0 right-0 h-0.5 bg-linear-to-r ${item.gradient} rounded-full`}
-                    />
-                  )}
+
                 </FastLink>
               );
             })}
@@ -404,7 +399,7 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
 
       {/* Spacer for fixed navigation */}
       <div className='hidden md:block h-16' />
-      <div className='md:hidden h-20' />
+      <div className='md:hidden h-12' />
     </>
   );
 }

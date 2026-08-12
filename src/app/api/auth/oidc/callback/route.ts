@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
+import { addHomeLoginTransition } from '@/lib/home-loading-transition';
 
 export const runtime = 'nodejs';
 
@@ -332,7 +333,9 @@ export async function GET(request: NextRequest) {
 
     if (username) {
       // 用户已存在,直接登录
-      const response = NextResponse.redirect(new URL('/', origin));
+      const response = NextResponse.redirect(
+        new URL(addHomeLoginTransition('/'), origin)
+      );
       const cookieValue = await generateAuthCookie(username, userRole);
       const expires = new Date();
       expires.setDate(expires.getDate() + 7);
@@ -364,37 +367,11 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // 用户不存在,检查是否允许注册
-    if (!oidcConfig.enableRegistration) {
-      return NextResponse.redirect(
-        new URL('/login?error=' + encodeURIComponent('该OIDC账号未注册'), origin)
-      );
-    }
-
-    // 需要注册,跳转到用户名输入页面
-    // 将OIDC信息存储到session中
-    const oidcSession = {
-      sub: oidcSub,
-      email: userInfo.email,
-      name: userInfo.name,
-      trust_level: userInfo.trust_level, // 提取trust_level字段
-      providerId: providerId, // 存储 provider ID 用于注册时验证
-      timestamp: Date.now(),
-    };
-    console.log('[OIDC Callback] Creating oidc_session:', { sub: oidcSession.sub, hasEmail: !!oidcSession.email, hasName: !!oidcSession.name, providerId });
-
-    const response = NextResponse.redirect(new URL('/oidc-register', origin));
-    response.cookies.set('oidc_session', JSON.stringify(oidcSession), {
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 600, // 10分钟
-    });
-
-    // 清除state cookie
+    const response = NextResponse.redirect(
+      new URL('/login?error=' + encodeURIComponent('该OIDC账号未注册，请联系管理员'), origin)
+    );
     response.cookies.delete('oidc_state');
-
+    response.cookies.delete('oidc_session');
     return response;
   } catch (error) {
     console.error('OIDC回调处理失败:', error);
